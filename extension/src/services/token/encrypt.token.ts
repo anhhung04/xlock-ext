@@ -4,7 +4,7 @@ import { deriveKey } from "~services/password/password.hash"
 import { saveSalt } from "~services/password/save.salt"
 
 import { initCrypto } from "./init.crypto"
-import { saveToken } from "./save.token"
+import { saveToken } from "./save.local.token"
 
 export async function encryptToken(token: string, password: string) {
   await initCrypto()

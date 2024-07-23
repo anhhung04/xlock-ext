@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 
 import { apiCall } from "~services/api/api"
+import { getSessionToken } from "~services/token/get.session.token"
 
 import AccountCard from "./AccountCard"
 
@@ -44,9 +45,7 @@ export default function Home({ loginSuccess }) {
 
   const fetchAccountCards = async () => {
     try {
-      // const storage = new Storage()
-      // const token = await storage.get("encryptedToken")
-      const token = "TOKEN DECRYPTED"
+      const token = await getSessionToken()
       const mainURL = await getURL()
 
       /*SOMEHOW I GOT STUCK AT THIS SHIT SO I WILL USE FULL URL*/
@@ -58,6 +57,7 @@ export default function Home({ loginSuccess }) {
       //   },
       //   token
       // )
+
       const responseData = await fetch(
         "http://localhost:8000/api/user/account",
         {

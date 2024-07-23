@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import Login from "~components/login/login"
 import Main from "~components/main/Main"
@@ -6,7 +6,7 @@ import { getSalt } from "~services/password/get.salt"
 import { authenPassword } from "~services/password/password.authen"
 import { authenToken } from "~services/token/auth.token"
 import { decryptToken } from "~services/token/decrypt.token"
-import { getEncryptedToken } from "~services/token/get.token"
+import { getEncryptedToken } from "~services/token/get.local.token"
 
 import "~style.css"
 
@@ -15,6 +15,18 @@ function IndexPopup() {
   const [isLogin, setIsLogin] = useState(false)
   const [showResetButton, setShowResetButton] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    chrome.storage.session.get("userToken", (result) => {
+      if (result) {
+        console.log(result)
+        setLoginSuccess(true)
+        setIsLogin(true)
+      }
+      setLoading(false)
+    })
+  }, [])
 
   function redirectToLogin(callbackURL: string) {
     chrome.windows.create({
@@ -31,8 +43,8 @@ function IndexPopup() {
     try {
       const encryptedToken = await getEncryptedToken()
       const salt = await getSalt()
-      const decryptedToken = decryptToken(encryptedToken, password, salt)
-      const responseToken = authenToken((await decryptedToken).toString())
+      const decryptedToken = await decryptToken(encryptedToken, password, salt)
+      const responseToken = await authenToken(decryptedToken)
 
       if (responseToken["code"] === 401) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -51,6 +63,14 @@ function IndexPopup() {
         setIncorrectAttempts(0)
         setIsLogin(true)
         setLoginSuccess(true)
+
+        chrome.storage.session.set({ userToken: decryptedToken }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error setting token:", chrome.runtime.lastError)
+          } else {
+            console.log("Token saved successfully")
+          }
+        })
       } else {
         setIncorrectAttempts((prev) => prev + 1)
         if (incorrectAttempts + 1 >= 5) {
@@ -64,6 +84,10 @@ function IndexPopup() {
 
   const handleResetPassword = () => {
     window.open(process.env.PLASMO_PUBLIC_FRONTEND_URL + "/login")
+  }
+
+  if (loading) {
+    return <div>Loading...</div>
   }
 
   if (isLogin) {

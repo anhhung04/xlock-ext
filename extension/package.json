@@ -40,10 +40,16 @@
       "tabs",
       "storage",
       "activeTab",
-      "scripting"
+      "scripting",
+      "windows"
     ],
     "content_security_policy": {
       "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+    },
+    "externally_connectable": {
+      "matches": [
+        "*://localhost/*"
+      ]
     }
   }
 }

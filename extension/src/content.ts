@@ -5,9 +5,13 @@ export const config: PlasmoCSConfig = {
   exclude_matches: ["http://*/*"]
 }
 
-console.log("content.js is working")
-const token = localStorage.getItem("userToken")
-console.log(token)
+async function testing() {
+  chrome.storage.session.get("userToken", (res) => {
+    console.log(res)
+  })
+}
+
+testing()
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   autofillCredentials(message.name, message.password)

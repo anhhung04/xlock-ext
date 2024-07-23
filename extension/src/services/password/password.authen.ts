@@ -1,6 +1,6 @@
 import { apiCall } from "~services/api/api"
 import { decryptToken } from "~services/token/decrypt.token"
-import { getEncryptedToken } from "~services/token/get.token"
+import { getEncryptedToken } from "~services/token/get.local.token"
 
 import { getSalt } from "./get.salt"
 import { deriveKey } from "./password.hash"

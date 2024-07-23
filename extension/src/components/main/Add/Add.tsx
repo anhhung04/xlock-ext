@@ -2,7 +2,7 @@ import React, { useState } from "react"
 
 import { apiCall } from "~services/api/api"
 import { decryptToken } from "~services/token/decrypt.token"
-import { getEncryptedToken } from "~services/token/get.token"
+import { getEncryptedToken } from "~services/token/get.local.token"
 
 export default function Add() {
   const [credentialId, setCredentialId] = useState("")
