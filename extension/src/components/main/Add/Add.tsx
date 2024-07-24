@@ -1,8 +1,23 @@
 import React, { useState } from "react"
 
 import { apiCall } from "~services/api/api"
-import { decryptToken } from "~services/token/decrypt.token"
-import { getEncryptedToken } from "~services/token/get.local.token"
+import { getSessionToken } from "~services/token/get.session.token"
+
+const getURL = () => {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const currentTab = tabs[0]
+      if (currentTab && currentTab.url) {
+        const parsedURL = new URL(currentTab.url)
+        const port = parsedURL.port ? `:${parsedURL.port}` : ""
+        const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}/`
+        resolve(mainURL)
+      } else {
+        reject("No active tab found or tab URL is missing")
+      }
+    })
+  })
+}
 
 export default function Add() {
   const [credentialId, setCredentialId] = useState("")
@@ -12,20 +27,15 @@ export default function Add() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const data = {
-      credentialId,
-      username,
-      password
+      name: username,
+      url: await getURL(),
+      description: "New item information",
+      credentials: credentialId
     }
 
-    // GET TOKEN SAVE IN SESSION STORAGE
-    const decryptedToken = "TOKEN ALREADY DECRYPTED"
+    const token = await getSessionToken()
 
-    const responseData = await apiCall(
-      "/api/account/add",
-      "POST",
-      data,
-      decryptedToken
-    )
+    const responseData = await apiCall("/api/account/add", "POST", data, token)
 
     console.log(responseData)
 

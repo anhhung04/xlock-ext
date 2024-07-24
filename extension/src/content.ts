@@ -1,17 +1,19 @@
 import type { PlasmoCSConfig } from "plasmo"
 
+import generateKeyPair from "~services/keyPair/generate.key.pair"
+
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
   exclude_matches: ["http://*/*"]
 }
 
 async function testing() {
-  chrome.storage.session.get("userToken", (res) => {
-    console.log(res)
-  })
+  const { privateKey: a, publicKey: b } = await generateKeyPair()
+  console.log(a)
+  console.log(b)
 }
 
-testing()
+testing().catch(console.error)
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   autofillCredentials(message.name, message.password)

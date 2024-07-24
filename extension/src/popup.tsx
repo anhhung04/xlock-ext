@@ -4,6 +4,7 @@ import Login from "~components/login/login"
 import Main from "~components/main/Main"
 import { getSalt } from "~services/password/get.salt"
 import { authenPassword } from "~services/password/password.authen"
+import { deriveKey } from "~services/password/password.hash"
 import { authenToken } from "~services/token/auth.token"
 import { decryptToken } from "~services/token/decrypt.token"
 import { getEncryptedToken } from "~services/token/get.local.token"
@@ -43,7 +44,8 @@ function IndexPopup() {
     try {
       const encryptedToken = await getEncryptedToken()
       const salt = await getSalt()
-      const decryptedToken = await decryptToken(encryptedToken, password, salt)
+      const { key: passwordHash } = await deriveKey(password, salt)
+      const decryptedToken = await decryptToken(encryptedToken, passwordHash)
       const responseToken = await authenToken(decryptedToken)
 
       if (responseToken["code"] === 401) {
@@ -55,7 +57,7 @@ function IndexPopup() {
       }
 
       const responseData = await authenPassword("/api/auth/login", {
-        Password: password
+        Password: passwordHash
       })
 
       const isSuccess = responseData && responseData["code"] === 200
