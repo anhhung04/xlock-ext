@@ -10,7 +10,7 @@ console.log("background.js is working")
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_TOKEN") {
     if (req.token) {
-      chrome.storage.local.set({ userToken: req.access_token }, () => {
+      chrome.storage.local.set({ access_token: req.access_token }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting token:", chrome.runtime.lastError)
           res({ success: false })
@@ -67,6 +67,21 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     } catch (error) {
       console.error("Error encrypt key:", error)
       res({ success: false, encryptedPrivateKey: "" })
+    }
+  } else if (req.type === "SEND_SALT") {
+    if (req.salt) {
+      chrome.storage.local.set({ salt: req.salt }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error setting salt:", chrome.runtime.lastError)
+          res({ success: false })
+        } else {
+          console.log("Salt saved successfully")
+          res({ success: true })
+        }
+      })
+      return true
+    } else {
+      res({ success: false })
     }
   } else {
     res({ success: false })

@@ -4,7 +4,7 @@ export default function requestSendToken(access_token: string): Promise<void> {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       id,
-      { access_token: access_token },
+      { access_token: access_token, type: "SEND_TOKEN" },
       (res: { success: boolean }) => {
         if (res.success) {
           console.log("SEND TOKEN SUCCESS")
