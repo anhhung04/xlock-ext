@@ -1,14 +1,9 @@
 import { Buffer } from "buffer"
 
-function arrayBufferToPem(arrayBuffer, label) {
+function arrayBufferToBase64(arrayBuffer: ArrayBuffer): string {
   const binary = Buffer.from(arrayBuffer).toString("binary")
   const base64 = Buffer.from(binary, "binary").toString("base64")
-  const pem = [
-    `-----BEGIN ${label}-----`,
-    ...base64.match(/.{1,64}/g),
-    `-----END ${label}-----`
-  ].join("\n")
-  return pem
+  return base64
 }
 
 export default async function generateKeyPair(): Promise<{
@@ -18,7 +13,7 @@ export default async function generateKeyPair(): Promise<{
   const keyPair = await crypto.subtle.generateKey(
     {
       name: "RSA-PSS",
-      modulusLength: 4096,
+      modulusLength: 1024,
       publicExponent: new Uint8Array([1, 0, 1]),
       hash: "SHA-256"
     },
@@ -31,11 +26,11 @@ export default async function generateKeyPair(): Promise<{
   const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey)
 
   // convert key to PEM format
-  const publicKeyPem = arrayBufferToPem(publicKey, "PUBLIC KEY")
-  const privateKeyPem = arrayBufferToPem(privateKey, "PRIVATE KEY")
+  const publicKeyBase64 = arrayBufferToBase64(publicKey)
+  const privateKeyBase64 = arrayBufferToBase64(privateKey)
 
   return {
-    privateKey: privateKeyPem,
-    publicKey: publicKeyPem
+    privateKey: privateKeyBase64,
+    publicKey: publicKeyBase64
   }
 }

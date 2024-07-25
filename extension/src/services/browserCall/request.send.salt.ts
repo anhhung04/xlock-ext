@@ -1,17 +1,17 @@
-export default function requestSendToken(access_token: string): Promise<void> {
+export default function requestSendSalt(salt: string): Promise<void> {
   const id = "dcdmepeacagahbdammaepndegcomiikm"
 
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       id,
-      { access_token: access_token },
+      { salt: salt },
       (res: { success: boolean }) => {
         if (res.success) {
-          console.log("SEND TOKEN SUCCESS")
+          console.log("SEND SALT SUCCESS")
           resolve()
         } else {
-          console.log("SEND TOKEN FAILED")
-          reject(new Error("SEND TOKEN FAILED"))
+          console.log("SEND SALT FAILED")
+          reject(new Error("SEND SALT FAILED"))
         }
       }
     )

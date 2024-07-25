@@ -8,5 +8,5 @@ export async function encryptPrivateKey(
 ) {
   await initCrypto()
   const encryptedPrivateKey = AES.encrypt(privateKey, hashPassword).toString()
-  return encryptPrivateKey
+  return encryptedPrivateKey
 }
