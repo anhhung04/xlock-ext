@@ -1,3 +1,4 @@
+import { subtle } from "crypto"
 import { useEffect, useState } from "react"
 
 import Login from "~components/login/login"
@@ -8,25 +9,34 @@ import { deriveKey } from "~services/password/password.hash"
 import { authenToken } from "~services/token/auth.token"
 import { decryptToken } from "~services/token/decrypt.token"
 import { getEncryptedToken } from "~services/token/get.local.token"
+import { getSessionToken } from "~services/token/get.session.token"
 
 import "~style.css"
+
+import { getInitializationVector } from "~services/initializationVector/get.vector"
+import { saveSessionToken } from "~services/token/save.session.token"
 
 function IndexPopup() {
   const [incorrectAttempts, setIncorrectAttempts] = useState(0)
   const [isLogin, setIsLogin] = useState(false)
   const [showResetButton, setShowResetButton] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    chrome.storage.session.get("userToken", (result) => {
-      if (result) {
-        console.log(result)
-        setLoginSuccess(true)
-        setIsLogin(true)
+    const fetchToken = async () => {
+      try {
+        const tokenResponse = await getSessionToken()
+        if (tokenResponse) {
+          console.log(tokenResponse)
+          setLoginSuccess(true)
+          setIsLogin(true)
+        }
+      } catch (error) {
+        console.log(error)
       }
-      setLoading(false)
-    })
+    }
+
+    fetchToken()
   }, [])
 
   function redirectToLogin(callbackURL: string) {
@@ -40,12 +50,23 @@ function IndexPopup() {
     })
   }
 
+  async function cryptoKeyToBase64(cryptoKey: CryptoKey): Promise<string> {
+    const exportedKey = await subtle.exportKey("raw", cryptoKey)
+    return Buffer.from(exportedKey).toString("base64")
+  }
+
   const handleLogin = async (password: string) => {
     try {
       const encryptedToken = await getEncryptedToken()
       const salt = await getSalt()
+      const initializationVector = await getInitializationVector()
       const { key: passwordHash } = await deriveKey(password, salt)
-      const decryptedToken = await decryptToken(encryptedToken, passwordHash)
+      const vault = {
+        salt,
+        initializationVector,
+        cipherText: encryptedToken
+      }
+      const decryptedToken = await decryptToken(vault, password)
       const responseToken = await authenToken(decryptedToken)
 
       if (responseToken["code"] === 401) {
@@ -57,22 +78,16 @@ function IndexPopup() {
       }
 
       const responseData = await authenPassword("/api/auth/login", {
-        Password: passwordHash
+        Password: await cryptoKeyToBase64(passwordHash)
       })
 
       const isSuccess = responseData && responseData["code"] === 200
       if (isSuccess) {
+        console.log(decryptedToken)
+        await saveSessionToken(decryptedToken)
         setIncorrectAttempts(0)
         setIsLogin(true)
         setLoginSuccess(true)
-
-        chrome.storage.session.set({ userToken: decryptedToken }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("Error setting token:", chrome.runtime.lastError)
-          } else {
-            console.log("Token saved successfully")
-          }
-        })
       } else {
         setIncorrectAttempts((prev) => prev + 1)
         if (incorrectAttempts + 1 >= 5) {
@@ -86,10 +101,6 @@ function IndexPopup() {
 
   const handleResetPassword = () => {
     window.open(process.env.PLASMO_PUBLIC_FRONTEND_URL + "/login")
-  }
-
-  if (loading) {
-    return <div>Loading...</div>
   }
 
   if (isLogin) {

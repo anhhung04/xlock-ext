@@ -9,8 +9,8 @@ console.log("background.js is working")
 
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_TOKEN") {
-    if (req.token) {
-      chrome.storage.local.set({ access_token: req.access_token }, () => {
+    if (req.access_token) {
+      chrome.storage.local.set({ userToken: req.access_token }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting token:", chrome.runtime.lastError)
           res({ success: false })
@@ -85,5 +85,88 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else {
     res({ success: false })
+  }
+})
+
+chrome.runtime.onSuspend.addListener(() => {
+  console.log("Browser is closing, clearing session storage")
+  chrome.storage.session.clear(() => {
+    if (chrome.runtime.lastError) {
+      console.error(chrome.runtime.lastError)
+    } else {
+      console.log("Session storage cleared")
+    }
+  })
+})
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.body.action === "setToken") {
+    chrome.storage.session.set({ userToken: request.body.userToken }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error setting token:", chrome.runtime.lastError)
+        sendResponse({ success: false, error: chrome.runtime.lastError })
+      } else {
+        console.log(`Set token success: ${request.body.userToken}`)
+        sendResponse({ success: true })
+      }
+    })
+    return true
+  } else if (request.body.action === "getToken") {
+    chrome.storage.session.get("userToken", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting token:", chrome.runtime.lastError)
+        sendResponse({ success: false, error: chrome.runtime.lastError })
+      } else {
+        sendResponse({ success: true, userToken: result.userToken })
+      }
+    })
+    return true
+  } else if (request.body.action === "getEncryptedToken") {
+    chrome.storage.local.get("userToken", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Error getting encrypted token:",
+          chrome.runtime.lastError
+        )
+        sendResponse({ success: false, userToken: "" })
+      } else {
+        console.log("Encrypted token retrieved successfully", result.userToken)
+        sendResponse({ success: true, userToken: result.userToken || "" })
+      }
+      return true
+    })
+  } else if (request.body.action === "getSalt") {
+    chrome.storage.local.get("salt", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting salt:", chrome.runtime.lastError)
+        sendResponse({ success: false, salt: "" })
+      } else {
+        console.log("Salt retrieved successfully", result.salt)
+        sendResponse({ success: true, salt: result.salt || "" })
+      }
+      return true
+    })
+  } else if (request.body.action === "setVector") {
+    chrome.storage.local.set({ vector: request.body.vector }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error setting vector:", chrome.runtime.lastError)
+        sendResponse({ success: false })
+      } else {
+        console.log("Vector saved successfully")
+        sendResponse({ success: true })
+      }
+      return true
+    })
+  } else if (request.body.action === "getVector") {
+    chrome.storage.local.get("vector", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting vector:", chrome.runtime.lastError)
+        sendResponse({ success: false, vector: "" })
+      } else {
+        console.log("Vector retrieved successfully", result.vector)
+        sendResponse({ success: true, salt: result.vector || "" })
+      }
+      return true
+    })
   }
 })

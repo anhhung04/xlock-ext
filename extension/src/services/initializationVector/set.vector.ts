@@ -1,21 +1,21 @@
 import { sendToBackground } from "@plasmohq/messaging"
 
-export async function saveSessionToken(decryptedToken: string): Promise<void> {
+export async function setInitialzationVector(vector: string): Promise<void> {
   return new Promise((resolve, reject) => {
     sendToBackground({
       name: "ping",
       body: {
-        action: "setToken",
-        userToken: decryptedToken
+        action: "setVector",
+        vector: vector
       }
     })
       .then((response) => {
         if (response.success) {
-          console.log("Token saved successfully")
+          console.log("Vector saved successfully")
           resolve()
         } else {
-          console.error("Failed to save token")
-          reject(new Error("Failed to save token"))
+          console.error("Failed to save vector")
+          reject(new Error("Failed to save vector"))
         }
       })
       .catch((error) => {

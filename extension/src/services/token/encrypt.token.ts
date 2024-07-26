@@ -1,11 +1,36 @@
-import { AES } from "@originjs/crypto-js-wasm"
+import { deriveKey } from "~services/password/password.hash"
 
-import { initCrypto } from "./init.crypto"
+type EncryptedVault = {
+  salt: string
+  initializationVector: string
+  cipherText: string
+}
 
-export async function encryptToken(token: string, hashPassword: string) {
-  await initCrypto()
+function bufferToBase64(buffer: Uint8Array): string {
+  return Buffer.from(buffer).toString("base64")
+}
 
-  const encrypted = AES.encrypt(token, hashPassword).toString()
+export async function encryptToken(
+  message: string,
+  password: string
+): Promise<EncryptedVault> {
+  const encoder = new TextEncoder()
+  const encodedPlaintext = encoder.encode(message)
 
-  return encrypted
+  const { key, salt } = await deriveKey(password)
+  const initializationVector = crypto.getRandomValues(new Uint8Array(16))
+
+  const cipherText = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: initializationVector },
+    key,
+    encodedPlaintext
+  )
+
+  const encryptedVault: EncryptedVault = {
+    salt,
+    initializationVector: bufferToBase64(initializationVector),
+    cipherText: bufferToBase64(new Uint8Array(cipherText))
+  }
+
+  return encryptedVault
 }

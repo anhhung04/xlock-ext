@@ -11,18 +11,13 @@ interface Body {
 
 export async function authenPassword(path: string, body: Body) {
   const encryptedToken = await getEncryptedToken()
-  const salt = await getSalt()
-  const token = await decryptToken(encryptedToken, body.Password, salt)
-  const { key: hassPass, salt: existSalt } = await deriveKey(
-    body.Password,
-    salt
-  )
+  const token = await decryptToken(encryptedToken, body.Password)
 
   const responseData = await apiCall(
     path,
     "POST",
     {
-      Password: hassPass
+      Password: body.Password
     },
     token
   )
