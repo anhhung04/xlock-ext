@@ -184,5 +184,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       return true
     })
+  } else if (request.body.action === "getDeviceID") {
+    chrome.storage.local.get("deviceID", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting deviceID:", chrome.runtime.lastError)
+        sendResponse({ success: false, deviceID: "" })
+      } else {
+        console.log("DeviceID retrieved successfully", result.vector)
+        sendResponse({ success: true, deviceID: result.deviceID })
+      }
+      return true
+    })
   }
 })
