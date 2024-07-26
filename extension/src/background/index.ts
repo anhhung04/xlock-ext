@@ -164,7 +164,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: false, vector: "" })
       } else {
         console.log("Vector retrieved successfully", result.vector)
-        sendResponse({ success: true, salt: result.vector || "" })
+        sendResponse({ success: true, vector: result.vector })
       }
       return true
     })

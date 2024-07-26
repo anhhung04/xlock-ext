@@ -1,4 +1,3 @@
-import { subtle } from "crypto"
 import { useEffect, useState } from "react"
 
 import Login from "~components/login/login"
@@ -21,6 +20,8 @@ function IndexPopup() {
   const [isLogin, setIsLogin] = useState(false)
   const [showResetButton, setShowResetButton] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
+
+  useEffect(() => {}, [])
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -51,7 +52,7 @@ function IndexPopup() {
   }
 
   async function cryptoKeyToBase64(cryptoKey: CryptoKey): Promise<string> {
-    const exportedKey = await subtle.exportKey("raw", cryptoKey)
+    const exportedKey = await window.crypto.subtle.exportKey("raw", cryptoKey)
     return Buffer.from(exportedKey).toString("base64")
   }
 
@@ -60,6 +61,7 @@ function IndexPopup() {
       const encryptedToken = await getEncryptedToken()
       const salt = await getSalt()
       const initializationVector = await getInitializationVector()
+
       const { key: passwordHash } = await deriveKey(password, salt)
       const vault = {
         salt,
@@ -77,13 +79,16 @@ function IndexPopup() {
         })
       }
 
+      const base64Password = await cryptoKeyToBase64(passwordHash)
+
       const responseData = await authenPassword("/api/auth/login", {
-        Password: await cryptoKeyToBase64(passwordHash)
+        password: base64Password,
+        decryptedToken: decryptedToken
       })
 
       const isSuccess = responseData && responseData["code"] === 200
       if (isSuccess) {
-        console.log(decryptedToken)
+        console.log("SAVE DECRYPTED TOKEN IN SESSION:::", decryptedToken)
         await saveSessionToken(decryptedToken)
         setIncorrectAttempts(0)
         setIsLogin(true)

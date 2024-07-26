@@ -7,6 +7,9 @@ type EncryptedVault = {
 }
 
 function base64ToBuffer(base64: string): Uint8Array {
+  if (!base64) {
+    throw new Error("Invalid base64 input")
+  }
   const binaryString = Buffer.from(base64, "base64").toString("binary")
   const len = binaryString.length
   const bytes = new Uint8Array(len)
