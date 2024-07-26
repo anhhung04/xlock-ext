@@ -12,12 +12,13 @@ function bufferToBase64(buffer: Uint8Array): string {
 
 export async function encryptToken(
   message: string,
-  password: string
+  password: string,
+  existingSalt: string
 ): Promise<EncryptedVault> {
   const encoder = new TextEncoder()
   const encodedPlaintext = encoder.encode(message)
 
-  const { key, salt } = await deriveKey(password)
+  const { key, salt } = await deriveKey(password, existingSalt)
   const initializationVector = crypto.getRandomValues(new Uint8Array(16))
 
   const cipherText = await crypto.subtle.encrypt(

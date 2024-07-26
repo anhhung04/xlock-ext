@@ -1,6 +1,6 @@
 export function requestEncryptPrivateKey(
   privateKey: string,
-  hashPassword: string
+  hashPassword: CryptoKey
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const id = "dcdmepeacagahbdammaepndegcomiikm"

@@ -12,6 +12,7 @@ import { getSessionToken } from "~services/token/get.session.token"
 
 import "~style.css"
 
+import Signup from "~components/signup/Signup"
 import { getInitializationVector } from "~services/initializationVector/get.vector"
 import { saveSessionToken } from "~services/token/save.session.token"
 
@@ -21,10 +22,25 @@ function IndexPopup() {
   const [showResetButton, setShowResetButton] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
 
-  useEffect(() => {}, [])
+  useEffect(() => {
+    const fetchLocalToken = async () => {
+      try {
+        const tokenResponse = await getEncryptedToken()
+        if (tokenResponse) {
+          console.log(tokenResponse)
+        } else {
+          return <Signup />
+        }
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    fetchLocalToken()
+  }, [])
 
   useEffect(() => {
-    const fetchToken = async () => {
+    const fetchSessionToken = async () => {
       try {
         const tokenResponse = await getSessionToken()
         if (tokenResponse) {
@@ -37,7 +53,7 @@ function IndexPopup() {
       }
     }
 
-    fetchToken()
+    fetchSessionToken()
   }, [])
 
   function redirectToLogin(callbackURL: string) {

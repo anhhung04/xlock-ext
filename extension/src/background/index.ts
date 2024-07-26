@@ -2,20 +2,46 @@ import generateDeviceId from "~services/deviceID/generate.device.id"
 import { encryptPrivateKey } from "~services/keyPair/encrypt.privateKey"
 import generateKeyPair from "~services/keyPair/generate.key.pair"
 import { deriveKey } from "~services/password/password.hash"
+import { encryptToken } from "~services/token/encrypt.token"
 
 export {}
 
 console.log("background.js is working")
 
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
-  if (req.type === "SEND_TOKEN") {
+  if (req.type === "SEND_DATA") {
     if (req.access_token) {
-      chrome.storage.local.set({ userToken: req.access_token }, () => {
+      const {
+        salt,
+        initializationVector,
+        cipherText: encryptedToken
+      } = await encryptToken(req.access_token, req.password, req.salt)
+      chrome.storage.local.set({ userToken: encryptedToken }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting token:", chrome.runtime.lastError)
           res({ success: false })
         } else {
           console.log("Token saved successfully")
+          res({ success: true })
+        }
+      })
+
+      chrome.storage.local.set({ salt: salt }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error setting salt:", chrome.runtime.lastError)
+          res({ success: false })
+        } else {
+          console.log("Salt saved successfully")
+          res({ success: true })
+        }
+      })
+
+      chrome.storage.local.set({ vector: initializationVector }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error setting vector:", chrome.runtime.lastError)
+          res({ success: false })
+        } else {
+          console.log("vector saved successfully")
           res({ success: true })
         }
       })
@@ -59,29 +85,19 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else if (req.type === "REQUEST_ENCRYPT_PRIVATE_KEY") {
     try {
+      const exportedKey = await window.crypto.subtle.exportKey(
+        "raw",
+        req.hashPassword
+      )
+      const stringKey = Buffer.from(exportedKey).toString("base64")
       const encryptedPrivateKey = await encryptPrivateKey(
         req.privateKey,
-        req.hashPassword
+        stringKey
       )
       res({ success: true, encryptedPrivateKey: encryptedPrivateKey })
     } catch (error) {
       console.error("Error encrypt key:", error)
       res({ success: false, encryptedPrivateKey: "" })
-    }
-  } else if (req.type === "SEND_SALT") {
-    if (req.salt) {
-      chrome.storage.local.set({ salt: req.salt }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("Error setting salt:", chrome.runtime.lastError)
-          res({ success: false })
-        } else {
-          console.log("Salt saved successfully")
-          res({ success: true })
-        }
-      })
-      return true
-    } else {
-      res({ success: false })
     }
   } else {
     res({ success: false })
