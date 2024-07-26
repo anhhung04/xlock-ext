@@ -1,16 +1,22 @@
+import { sendToBackground } from "@plasmohq/messaging"
+
 export async function getSessionToken(): Promise<string> {
   return new Promise((resolve, reject) => {
-    chrome.storage.session.get("userToken", (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error getting token:", chrome.runtime.lastError)
-        reject("")
-      } else {
-        if (result.userToken) {
-          resolve(result.userToken)
-        } else {
-          resolve("")
-        }
-      }
+    sendToBackground({
+      name: "ping",
+      body: { action: "getToken" }
     })
+      .then((response) => {
+        if (response.success && response.userToken) {
+          resolve(response.userToken)
+        } else {
+          console.error("Failed to retrieve token")
+          reject(new Error("Failed to retrieve token"))
+        }
+      })
+      .catch((error) => {
+        console.error("Error sending message to background", error)
+        reject(error)
+      })
   })
 }

@@ -1,17 +1,10 @@
-import { pbkdf2Sync } from "crypto"
-
 type SaltedKey = {
-  key: string
+  key: CryptoKey
   salt: string
 }
 
 function bufferToBase64(buffer: Uint8Array): string {
-  let binary = ""
-  const len = buffer.byteLength
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(buffer[i])
-  }
-  return btoa(binary)
+  return Buffer.from(buffer).toString("base64")
 }
 
 async function generateSalt(): Promise<string> {
@@ -23,14 +16,35 @@ export async function deriveKey(
   password: string,
   existingSalt?: string
 ): Promise<SaltedKey> {
-  const salt = existingSalt || (await generateSalt())
-  const iterations = 1000
-  const keyLength = 256 / 32
+  const { crypto } = global
 
-  const keyBuffer = pbkdf2Sync(password, salt, iterations, keyLength, "sha256")
-  const keyString = bufferToBase64(new Uint8Array(keyBuffer))
+  const salt = existingSalt || (await generateSalt())
+
+  const encoder = new TextEncoder()
+
+  const derivationKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  )
+
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: encoder.encode(salt),
+      iterations: 1000,
+      hash: "SHA-256"
+    },
+    derivationKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  )
+
   return {
-    key: keyString,
-    salt: salt
+    key,
+    salt
   }
 }

@@ -1,16 +1,22 @@
+import { sendToBackground } from "@plasmohq/messaging"
+
 export async function getEncryptedToken(): Promise<string> {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get("userToken", (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error getting token:", chrome.runtime.lastError)
-        reject("")
-      } else {
-        if (result.userToken) {
-          resolve(result.userToken)
-        } else {
-          resolve("")
-        }
+    sendToBackground({
+      name: "ping",
+      body: {
+        action: "getEncryptedToken"
       }
     })
+      .then((response) => {
+        if (response.success) {
+          resolve(response.userToken)
+        } else {
+          reject(new Error("Failed to retreive encrypted token"))
+        }
+      })
+      .catch((error) => {
+        reject(error)
+      })
   })
 }

@@ -1,19 +1,15 @@
 import type { PlasmoCSConfig } from "plasmo"
 
-import generateKeyPair from "~services/keyPair/generate.key.pair"
+import { setInitialzationVector } from "~services/initializationVector/set.vector"
+import { saveSalt } from "~services/password/save.salt"
+import { decryptToken } from "~services/token/decrypt.token"
+import { encryptToken } from "~services/token/encrypt.token"
+import { saveToken } from "~services/token/save.local.token"
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
   exclude_matches: ["http://*/*"]
 }
-
-async function testing() {
-  const { privateKey: a, publicKey: b } = await generateKeyPair()
-  console.log(a)
-  console.log(b)
-}
-
-testing().catch(console.error)
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   autofillCredentials(message.name, message.password)
@@ -35,3 +31,6 @@ function autofillCredentials(username: string, password: string) {
     passwordField.value = password
   }
 }
+
+const password = "111111"
+const access_token = "toighetbachkhoa"

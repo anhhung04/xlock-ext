@@ -42,7 +42,7 @@ export default function AccountCard({
 
     const response = await sendToContentScript(message)
 
-    console.log("RESPOSE FROM CONTENT:", response)
+    console.log("RESPONSE FROM CONTENT:", response)
   }
 
   return (
