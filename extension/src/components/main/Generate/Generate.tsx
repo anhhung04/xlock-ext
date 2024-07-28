@@ -1,8 +1,51 @@
-import React from "react"
+import React, { useState } from "react"
 
 export default function Generate() {
+  const [generatedPassword, setGeneratedPassword] = useState<string>("")
+
+  const generateKey = () => {
+    const length = Math.floor(Math.random() * (20 - 15 + 1)) + 15
+    const charset =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
+    let password = ""
+
+    while (
+      !(
+        /[a-z]/.test(password) &&
+        /[A-Z]/.test(password) &&
+        /[0-9]/.test(password) &&
+        /[!@#$%^&*()]/.test(password)
+      )
+    ) {
+      password = Array(length)
+        .fill(charset)
+        .map((x) => x[Math.floor(Math.random() * x.length)])
+        .join("")
+    }
+
+    return password
+  }
+
+  const fillPasswordIntoSignup = (password: string) => {
+    const passwordField = document.getElementById("passwordField")
+    const confirmPasswordField = document.getElementById("confirmPasswordField")
+
+    if (
+      passwordField &&
+      passwordField instanceof HTMLInputElement &&
+      confirmPasswordField &&
+      confirmPasswordField instanceof HTMLInputElement
+    ) {
+      passwordField.value = password
+      confirmPasswordField.value = password
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const password = generateKey()
+    setGeneratedPassword(password)
+    fillPasswordIntoSignup(password)
   }
   return (
     <div
@@ -98,6 +141,18 @@ export default function Generate() {
           </span>
         </button>
       </form>
+      {generatedPassword && (
+        <div
+          style={{
+            marginTop: "10px",
+            padding: "10px",
+            border: "1px solid #D1D3D3",
+            borderRadius: "6px",
+            backgroundColor: "#F8F9FA"
+          }}>
+          <p>Generated Password: {generatedPassword}</p>
+        </div>
+      )}
     </div>
   )
 }

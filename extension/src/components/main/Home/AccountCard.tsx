@@ -4,23 +4,21 @@ import { sendToContentScript } from "@plasmohq/messaging"
 
 import Button from "./Button"
 
-interface UserInfo {
-  buttonKey: string
-  credentialID: string
+interface Credentials {
   username: string
   password: string
 }
 
-interface Message {
-  name: string
-  password: string
+interface UserInfo {
+  buttonKey: string
+  credentialID: string
+  credentials: Credentials
 }
 
 export default function AccountCard({
   buttonKey,
   credentialID,
-  username,
-  password
+  credentials
 }: UserInfo) {
   const [isChecked, setIsChecked] = useState<boolean>(false)
 
@@ -29,20 +27,18 @@ export default function AccountCard({
   }
 
   const handleClick = async () => {
-    console.log("Sending message:", {
+    console.log({
       type: "AUTOFILL_CREDENTIALS",
-      username,
-      password
+      username: credentials.username,
+      password: credentials.password
     })
 
-    const message: Message = {
-      name: username,
-      password: password
+    const message: { name: string; password: string } = {
+      name: credentials.username,
+      password: credentials.password
     }
 
     const response = await sendToContentScript(message)
-
-    console.log("RESPONSE FROM CONTENT:", response)
   }
 
   return (
@@ -83,7 +79,7 @@ export default function AccountCard({
           <p
             className="plasmo-pl-3 plasmo-test-sm font-normal plasmo-h-3.5"
             style={{ fontFamily: "Inter" }}>
-            {isChecked ? username : "********"}
+            {isChecked ? credentials.username : "********"}
           </p>
         </div>
       </div>

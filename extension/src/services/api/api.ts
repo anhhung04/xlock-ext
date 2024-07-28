@@ -21,6 +21,14 @@ export async function apiCall(
       }
     )
 
+    if (res.status === 401) {
+      return { code: 401, message: "Unauthorized" }
+    }
+
+    if (res.status === 403) {
+      return { code: 403, message: "Forbidden" }
+    }
+
     return await res.json()
   } catch (error) {
     return {

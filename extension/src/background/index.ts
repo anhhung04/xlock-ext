@@ -1,3 +1,4 @@
+import { apiCall } from "~services/api/api"
 import generateDeviceId from "~services/deviceID/generate.device.id"
 import { encryptPrivateKey } from "~services/keyPair/encrypt.privateKey"
 import generateKeyPair from "~services/keyPair/generate.key.pair"
@@ -115,7 +116,7 @@ chrome.runtime.onSuspend.addListener(() => {
   })
 })
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.body.action === "setToken") {
     chrome.storage.session.set({ userToken: request.body.userToken }, () => {
       if (chrome.runtime.lastError) {

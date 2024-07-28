@@ -104,7 +104,6 @@ function IndexPopup() {
 
       const isSuccess = responseData && responseData["code"] === 200
       if (isSuccess) {
-        console.log("SAVE DECRYPTED TOKEN IN SESSION:::", decryptedToken)
         await saveSessionToken(decryptedToken)
         setIncorrectAttempts(0)
         setIsLogin(true)

@@ -4,28 +4,37 @@ import { apiCall } from "~services/api/api"
 import { getSessionToken } from "~services/token/get.session.token"
 
 import AccountCard from "./AccountCard"
-
-interface accountCards {
-  credential_id: string
-  username: string
-  password: string
-}
+import Modal from "./Modal"
 
 interface TabInfo {
   title: string
   favicon: string
 }
 
-interface AccountCardInfo {
-  id: string
+interface credentials {
   username: string
   password: string
 }
 
-export default function Home({ loginSuccess }) {
-  const [tabInfo, setTabInfo] = useState<TabInfo>({ title: "", favicon: "" })
+interface AccountCardInfo {
+  credentialID: string
+  credentials: credentials
+}
 
+interface HomeProps {
+  loginSuccess: boolean
+  onAddAccount: () => void
+  onGenerateKey: () => void
+}
+
+export default function Home({
+  loginSuccess,
+  onAddAccount,
+  onGenerateKey
+}: HomeProps) {
+  const [tabInfo, setTabInfo] = useState<TabInfo>({ title: "", favicon: "" })
   const [accountCards, setAccountCards] = useState<AccountCardInfo[]>([])
+  const [showModal, setShowModal] = useState<boolean>(false)
 
   const getURL = () => {
     return new Promise((resolve, reject) => {
@@ -57,16 +66,13 @@ export default function Home({ loginSuccess }) {
       //   },
       //   token
       // )
-
-      const responseData = await fetch(
-        "http://localhost:8000/api/user/account",
-        {
-          method: "GET",
-          headers: {
-            "content-type": "application/json"
-          }
+      const url = "http://localhost:8000/api/user/account"
+      const responseData = await fetch("http://localhost:5000/account", {
+        method: "GET",
+        headers: {
+          "content-type": "application/json"
         }
-      )
+      })
 
       if (responseData["code"] === 401) {
         throw new Error(responseData["message"])
@@ -74,6 +80,10 @@ export default function Home({ loginSuccess }) {
 
       const listAccountCards: AccountCardInfo[] = await responseData.json()
       setAccountCards(listAccountCards)
+
+      if (listAccountCards.length === 0) {
+        setShowModal(true)
+      }
 
       console.log("Fetched account cards successfully", responseData)
     } catch (error) {
@@ -108,6 +118,16 @@ export default function Home({ loginSuccess }) {
       chrome.tabs.onActivated.removeListener(handleTabActivated)
     }
   }, [])
+
+  const handleAddAccount = () => {
+    setShowModal(false)
+    onAddAccount()
+  }
+
+  const handleGenerateKey = () => {
+    setShowModal(false)
+    onGenerateKey()
+  }
 
   return (
     <div className="" style={{ height: 472 }}>
@@ -155,11 +175,17 @@ export default function Home({ loginSuccess }) {
           <AccountCard
             key={index}
             buttonKey={index.toString()}
-            credentialID={accountCard.id}
-            username={accountCard.username}
-            password={accountCard.password}
+            credentialID={accountCard.credentialID}
+            credentials={accountCard.credentials}
           />
         ))}
+        {showModal && (
+          <Modal
+            onClose={() => setShowModal(false)}
+            onAddAccount={handleAddAccount}
+            onGenerateKey={handleGenerateKey}
+          />
+        )}
       </div>
     </div>
   )

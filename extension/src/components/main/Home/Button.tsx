@@ -16,7 +16,10 @@ export default function Button({ label, onCheck }: ButtonProps) {
   }
 
   return (
-    <div className="container" style={{ textAlign: "center" }}>
+    <div
+      className="container"
+      style={{ textAlign: "center" }}
+      onClick={(e) => e.stopPropagation()}>
       <div
         className="toggle-switch"
         style={{
