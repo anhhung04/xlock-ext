@@ -10,10 +10,10 @@ function bufferToBase64(buffer: Uint8Array): string {
   return Buffer.from(buffer).toString("base64")
 }
 
-export async function encryptToken(
+export async function encryptMessage(
   message: string,
   password: string,
-  existingSalt: string
+  existingSalt?: string
 ): Promise<EncryptedVault> {
   const encoder = new TextEncoder()
   const encodedPlaintext = encoder.encode(message)

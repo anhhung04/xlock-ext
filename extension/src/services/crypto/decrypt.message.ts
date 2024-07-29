@@ -19,7 +19,7 @@ function base64ToBuffer(base64: string): Uint8Array {
   return bytes
 }
 
-export async function decryptToken(
+export async function decryptMessage(
   vault: EncryptedVault,
   password: string
 ): Promise<string> {

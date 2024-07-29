@@ -6,13 +6,13 @@ import { getSalt } from "~services/password/get.salt"
 import { authenPassword } from "~services/password/password.authen"
 import { deriveKey } from "~services/password/password.hash"
 import { authenToken } from "~services/token/auth.token"
-import { decryptToken } from "~services/token/decrypt.token"
 import { getEncryptedToken } from "~services/token/get.local.token"
 import { getSessionToken } from "~services/token/get.session.token"
 
 import "~style.css"
 
 import Signup from "~components/signup/Signup"
+import { decryptMessage } from "~services/crypto/decrypt.message"
 import { getInitializationVector } from "~services/initializationVector/get.vector"
 import { cryptoKeyToBase64 } from "~services/password/cryptoKey.to.base64"
 import { saveSessionToken } from "~services/token/save.session.token"
@@ -80,7 +80,7 @@ function IndexPopup() {
         initializationVector,
         cipherText: encryptedToken
       }
-      const decryptedToken = await decryptToken(vault, password)
+      const decryptedToken = await decryptMessage(vault, password)
       const responseToken = await authenToken(decryptedToken)
 
       if (responseToken["code"] === 401) {

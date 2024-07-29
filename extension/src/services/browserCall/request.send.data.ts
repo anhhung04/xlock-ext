@@ -1,4 +1,4 @@
-export default function requestSendToken(
+export default function requestSendData(
   access_token: string,
   password: string,
   salt: string
@@ -16,10 +16,8 @@ export default function requestSendToken(
       },
       (res: { success: boolean }) => {
         if (res.success) {
-          console.log("SEND TOKEN SUCCESS")
           resolve()
         } else {
-          console.log("SEND TOKEN FAILED")
           reject(new Error("SEND TOKEN FAILED"))
         }
       }
