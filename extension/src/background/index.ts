@@ -70,7 +70,13 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   } else if (req.type === "REQUEST_HASH_PASSWORD") {
     try {
       const { key: hashPassword, salt: salt } = await deriveKey(req.password)
-      res({ success: true, password: hashPassword, salt: salt })
+      const exportedKey = await self.crypto.subtle.exportKey(
+        "raw",
+        hashPassword
+      )
+      const base64Key = Buffer.from(exportedKey).toString("base64")
+
+      res({ success: true, password: base64Key, salt: salt })
     } catch (error) {
       console.error("Error hashing password:", error)
       res({ success: false, password: "", salt: "" })

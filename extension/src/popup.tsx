@@ -14,6 +14,7 @@ import "~style.css"
 
 import Signup from "~components/signup/Signup"
 import { getInitializationVector } from "~services/initializationVector/get.vector"
+import { cryptoKeyToBase64 } from "~services/password/cryptoKey.to.base64"
 import { saveSessionToken } from "~services/token/save.session.token"
 
 function IndexPopup() {
@@ -65,11 +66,6 @@ function IndexPopup() {
       width: 500,
       height: 500
     })
-  }
-
-  async function cryptoKeyToBase64(cryptoKey: CryptoKey): Promise<string> {
-    const exportedKey = await window.crypto.subtle.exportKey("raw", cryptoKey)
-    return Buffer.from(exportedKey).toString("base64")
   }
 
   const handleLogin = async (password: string) => {

@@ -1,3 +1,4 @@
+import { parse } from "path"
 import type { PlasmoCSConfig } from "plasmo"
 
 export const config: PlasmoCSConfig = {
@@ -33,7 +34,7 @@ function isLoginPage() {
   const url = window.location.href.toLowerCase()
 
   return (
-    loginKeywords.some((keyword) => url.includes(keyword)) &&
+    loginKeywords.some((keyword) => url.includes(keyword)) ||
     !signupKeywords.some((keyword) => url.includes(keyword))
   )
 }
@@ -86,27 +87,43 @@ const detectPasswordField = () => {
       const left = rect.left
       const right = rect.right
 
-      const computedStyle = window.getComputedStyle(passwordField)
-      const paddingRight = parseFloat(computedStyle.paddingRight)
-      console.log(paddingRight)
+      // console.log("TOP:::", top)
+      // console.log("bottom:::", bottom)
+      // console.log("left:::", left)
+      // console.log("right:::", right)
 
-      xLockButton.style.top = `${cumulativeHeight + (bottom - top) / 2 - 12}px`
-      xLockButton.style.left = `${right - paddingRight - 24 - left}px`
+      const computedStyleWidth = window.getComputedStyle(passwordField)
+      const paddingRight = parseFloat(computedStyleWidth.paddingRight)
+      const computedStyleHeight = window.getComputedStyle(parentDiv)
+      const paddingTop = parseFloat(computedStyleHeight.paddingTop)
+      const padRight = parseFloat(computedStyleHeight.paddingRight)
+      const borderRightWidth = parseFloat(computedStyleHeight.borderRightWidth)
+      const borderTopWidth = parseFloat(computedStyleHeight.borderTopWidth)
+      const borderLeftWidth = parseFloat(computedStyleHeight.borderLeftWidth)
 
-      xLockButton.addEventListener("mouseover", () => {
+      xLockButton.style.top = `${paddingTop + borderTopWidth + cumulativeHeight + (bottom - top) / 2 - 12}px`
+      xLockButton.style.left = `${right - paddingRight - borderRightWidth + padRight - 24 - left - borderLeftWidth}px`
+
+      passwordField.addEventListener("focus", () => {
         xLockButton.style.opacity = "1"
       })
 
-      xLockButton.addEventListener("mouseout", () => {
-        xLockButton.style.opacity = "0"
-      })
+      passwordField.addEventListener("blur", () => {
+        passwordField.addEventListener("mouseover", () => {
+          xLockButton.style.opacity = "1"
+        })
 
-      passwordField.addEventListener("mouseover", () => {
-        xLockButton.style.opacity = "1"
-      })
+        passwordField.addEventListener("mouseout", () => {
+          xLockButton.style.opacity = "0"
+        })
 
-      passwordField.addEventListener("mouseout", () => {
-        xLockButton.style.opacity = "0"
+        xLockButton.addEventListener("mouseover", () => {
+          xLockButton.style.opacity = "1"
+        })
+
+        xLockButton.addEventListener("mouseout", () => {
+          xLockButton.style.opacity = "0"
+        })
       })
 
       parentDiv.appendChild(xLockButton)
