@@ -73,7 +73,7 @@ export default function Add() {
     // }
   }
   return (
-    <div style={{ position: "relative", height: "100%" }}>
+    <div style={{ position: "relative", height: 470.4 }}>
       {showModal && <Modal onClose={() => setShowModal(false)} />}
       <div
         style={{

@@ -21,7 +21,7 @@ export default function Main({ loginSuccess }) {
   }
 
   return (
-    <div className="plasmo-flex plasmo-flex-col plasmo-w-90 plasmo-h-145 plasmo-border">
+    <div className="plasmo-flex plasmo-flex-col plasmo-w-90 plasmo-h-145 plasmo-max-h-145 plasmo-border">
       <div
         className="plasmo-flex plasmo-px-5 plasmo-py-2.5 plasmo-justify-start plasmo-items-center plasmo-bg-white"
         style={{ boxShadow: "0px 1px 15px 0px rgba(0, 0, 0, 0.25)" }}>

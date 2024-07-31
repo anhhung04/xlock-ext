@@ -1,20 +1,48 @@
+import { Height } from "@material-ui/icons"
+import { Box, Button, Slider, TextField, Typography } from "@mui/material"
 import React, { useState } from "react"
 
-export default function Generate() {
-  const [generatedPassword, setGeneratedPassword] = useState<string>("")
+import ButtonCheckbox from "./ButtonCheckbox"
 
-  const generateKey = () => {
-    const length = Math.floor(Math.random() * (20 - 15 + 1)) + 15
-    const charset =
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
+export default function Generate() {
+  const [password, setPassword] = useState<string>("")
+  const [length, setLength] = useState<number>(50)
+  const [includeDigits, setIncludeDigits] = useState<boolean>(true)
+  const [includeSymbols, setIncludeSymbols] = useState<boolean>(true)
+  const [capitalFirstLetter, setCapitalFirstLetter] = useState<boolean>(true)
+  const [includeAmbiguous, setIncludeAmbiguous] = useState<boolean>(true)
+
+  const icon = chrome.runtime.getURL(`assets/copy.svg`)
+
+  const generatePassword = (): void => {
+    let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    const ambigiousCharacters = "{}[]()/'\"`~,;:.<>\\|"
+    const digits = "0123456789"
+    const symbols = "!@#$%^&*()"
+    if (includeDigits) {
+      charset += digits
+    }
+    if (includeSymbols) {
+      charset += symbols
+    }
+    if (includeAmbiguous) {
+      charset += ambigiousCharacters
+    }
+
+    const escapeRegExp = (string: string) => {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    }
+
     let password = ""
 
     while (
       !(
         /[a-z]/.test(password) &&
         /[A-Z]/.test(password) &&
-        /[0-9]/.test(password) &&
-        /[!@#$%^&*()]/.test(password)
+        (/[0-9]/.test(password) || !includeDigits) &&
+        (/[!@#$%^&*()]/.test(password) || !includeSymbols) &&
+        (new RegExp(`[${escapeRegExp(ambigiousCharacters)}]`).test(password) ||
+          !includeAmbiguous)
       )
     ) {
       password = Array(length)
@@ -23,136 +51,146 @@ export default function Generate() {
         .join("")
     }
 
-    return password
+    if (capitalFirstLetter) {
+      password = password.charAt(0).toUpperCase() + password.slice(1)
+    }
+
+    setPassword(password)
   }
 
-  const fillPasswordIntoSignup = (password: string) => {
-    const passwordField = document.getElementById("passwordField")
-    const confirmPasswordField = document.getElementById("confirmPasswordField")
+  const handleSliderChange = (event: any, newValue: number | number[]) => {
+    setLength(newValue as number)
+  }
 
-    if (
-      passwordField &&
-      passwordField instanceof HTMLInputElement &&
-      confirmPasswordField &&
-      confirmPasswordField instanceof HTMLInputElement
-    ) {
-      passwordField.value = password
-      confirmPasswordField.value = password
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.value
+    if (newValue === "" || isNaN(Number(newValue))) {
+      setLength(0)
+    } else {
+      const value = Number(newValue)
+      if (value >= 1 && value <= 100) {
+        setLength(value)
+      } else if (value < 1) {
+        setLength(1)
+      } else {
+        setLength(100)
+      }
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const password = generateKey()
-    setGeneratedPassword(password)
-    fillPasswordIntoSignup(password)
+  function handleCopy() {
+    navigator.clipboard.writeText(password)
   }
+
   return (
-    <div
-      style={{ height: 472 }}
-      className="plasmo-flex plasmo-flex-col plasmo-pt-10 plasmo-items-center">
-      <p
-        className=" plasmo-font-bold plasmo-mb-5"
-        style={{ fontSize: "22px", fontFamily: "Inter" }}>
-        Generate new key
-      </p>
-      <form
-        id="formAdd"
-        onSubmit={handleSubmit}
-        className="plasmo-flex plasmo-flex-col plasmo-items-center plasmo-gap-5">
-        <div
-          className="plasmo-flex plasmo-flex-col plasmo-gap-2 plasmo-items-start plasmo-justify-start plasmo-h-40 plasmo-p-4"
+    <div className="plasmo-w-[358.4px] plasmo-h-[470.4px] plasmo-pt-10 plasmo-flex plasmo-flex-col plasmo-items-center">
+      <div className="plasmo-text-[28px] plasmo-font-['Inter'] plasmo-font-semibold">
+        <p>Generate password</p>
+      </div>
+      <div
+        className="plasmo-w-80.5 plasmo-h-10 plasmo-flex plasmo-justify-between plasmo-items-center plasmo-rounded-[6px] plasmo-bg-white plasmo-px-5 plasmo-mt-5"
+        style={{
+          boxShadow:
+            "0px 1px 2px 0px rgba(60, 64, 67, 0.30), 0px 2px 8px 8px rgba(60, 64, 67, 0.15)"
+        }}>
+        <p
+          className="plasmo-flex-grow plasmo-flex-shrink plasmo-truncate"
           style={{
-            borderRadius: 12,
-            border: "1px solid #D1D3D3",
-            boxShadow: "0px 4px 4px 0px rgba(0, 0, 0, 0.25)"
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            marginRight: 10
           }}>
-          <div className="plasmo-flex plasmo-flex-col">
-            <label
-              htmlFor="credentialIdField"
-              className="plasmo-text-sm plasmo-font-medium plasmo-pl-3"
-              style={{ fontFamily: "Inter" }}>
-              Credential id
-            </label>
+          {password}
+        </p>
+        <div
+          className="plasmo-flex-shrink-0 hover:plasmo-scale-110 transition active:plasmo-scale-90"
+          style={{
+            backgroundImage: `url(${icon})`,
+            height: 20,
+            width: 20
+          }}
+          onClick={handleCopy}></div>
+      </div>
 
+      <div
+        className="plasmo-mt-5 plasmo-flex  plasmo-flex-col plasmo-items-start plasmo-p-4 plasmo-w-80.5"
+        style={{
+          borderRadius: 6,
+          background: "#FFF",
+          boxShadow:
+            "0px 1px 2px 0px rgba(60, 64, 67, 0.30), 0px 2px 8px 8px rgba(60, 64, 67, 0.15)"
+        }}>
+        <Typography gutterBottom>Your password includes</Typography>
+        <div className="plasmo-flex plasmo-gap-4 plasmo-h-10 plasmo-mt-2">
+          <ButtonCheckbox
+            id="1"
+            title="Digits"
+            handleChecked={setIncludeDigits}
+          />
+          <ButtonCheckbox
+            id="2"
+            title="Ambigious characters"
+            handleChecked={setIncludeAmbiguous}
+          />
+        </div>
+        <div className="plasmo-flex plasmo-gap-4 plasmo-h-10">
+          <ButtonCheckbox
+            id="3"
+            title="Capital first letter"
+            handleChecked={setCapitalFirstLetter}
+          />
+          <ButtonCheckbox
+            id="4"
+            title="Symbols"
+            handleChecked={setIncludeSymbols}
+          />
+        </div>
+
+        <Typography gutterBottom>Password's length</Typography>
+        <div className="plasmo-flex plasmo-justify-between plasmo-items-center">
+          <div className="plasmo-flex-grow-0">
+            <Slider
+              value={length}
+              onChange={handleSliderChange}
+              aria-labelledby="password-length-slider"
+              valueLabelDisplay="auto"
+              min={1}
+              max={100}
+              style={{ flex: 1, marginLeft: 8, marginRight: 220 }}
+            />
+          </div>
+          <div className="plasmo-flex-grow-0">
             <input
-              className="plasmo-flex plasmo-flex-col plasmo-justify-center plasmo-h-10 plasmo-gap-2"
+              type="text"
+              value={length}
+              onChange={handleInputChange}
+              aria-labelledby="password-length-slider"
+              pattern="[0-9]*"
+              inputMode="numeric"
               style={{
+                width: 40,
+                height: 40,
+                marginLeft: 20,
+                backgroundColor: "#EFF0F0",
+                textAlign: "center",
                 borderRadius: 12,
-                border: "1px solid #D1D3D3",
-                background: "#FFF",
-                width: "272px",
-                paddingLeft: "10px",
+                fontSize: 12,
                 fontFamily: "Inter"
               }}
-              placeholder="Enter credential id"
-            />
-          </div>
-          <div className="plasmo-flex plasmo-flex-col">
-            <label
-              htmlFor="usernameField"
-              className="plasmo-text-sm plasmo-font-medium plasmo-pl-3"
-              style={{ fontFamily: "Inter" }}>
-              Username
-            </label>
-
-            <input
-              className="plasmo-flex plasmo-flex-col plasmo-justify-center plasmo-h-10 plasmo-gap-2"
-              style={{
-                borderRadius: 12,
-                border: "1px solid #D1D3D3",
-                background: "#FFF",
-                width: "272px",
-                paddingLeft: "10px",
-                fontFamily: "Inter"
-              }}
-              placeholder="Enter username"
             />
           </div>
         </div>
-
-        <div
-          className="plasmo-flex plasmo-justify-start plasmo-items-center plasmo-p-2 plasmo-px-4 plasmo-gap-2"
-          style={{
-            borderRadius: "6px",
-            border: "1px solid #0570EB",
-            background: "#E6F1FD",
-            width: 310
-          }}>
-          <div style={{ height: 34 }}>
-            <img
-              src="D:\ProgrammingCode\Chrome Extension\Plasmo\xlock-extension\extension\assets\warning.png"
-              alt="warning"
-            />
-          </div>
-          <p className="plasmo-w-3/4" style={{ fontSize: 14, fontWeight: 400 }}>
-            This key is unique and must not be shared with anyone else
-          </p>
-        </div>
-
-        <button
-          type="submit"
-          className="plasmo-h-10 plasmo-border plasmo-rounded-md plasmo-mb-1"
-          style={{ backgroundColor: "#0570EB", width: 310 }}>
-          <span
-            className="plasmo-text-white plasmo-text-base plasmo-font-semibold"
-            style={{ fontFamily: "Inter" }}>
-            Generate
-          </span>
-        </button>
-      </form>
-      {generatedPassword && (
-        <div
-          style={{
-            marginTop: "10px",
-            padding: "10px",
-            border: "1px solid #D1D3D3",
-            borderRadius: "6px",
-            backgroundColor: "#F8F9FA"
-          }}>
-          <p>Generated Password: {generatedPassword}</p>
-        </div>
-      )}
+      </div>
+      <div className="plasmo-w-80.5 plasmo-mt-10">
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          onClick={generatePassword}>
+          Generate
+        </Button>
+      </div>
     </div>
   )
 }
