@@ -196,5 +196,14 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       }
       return true
     })
+  } else if (request.body.action === "getTabIcon") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].favIconUrl) {
+        sendResponse({ iconUrl: tabs[0].favIconUrl })
+      } else {
+        sendResponse({ iconUrl: null })
+      }
+    })
+    return true
   }
 })
