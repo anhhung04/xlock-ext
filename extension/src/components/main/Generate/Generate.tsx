@@ -1,5 +1,4 @@
-import { Height } from "@material-ui/icons"
-import { Box, Button, Slider, TextField, Typography } from "@mui/material"
+import { Button, Slider, Typography } from "@mui/material"
 import React, { useState } from "react"
 
 import ButtonCheckbox from "./ButtonCheckbox"
@@ -45,15 +44,23 @@ export default function Generate() {
           !includeAmbiguous)
       )
     ) {
-      password = Array(length)
+      let tempPassword = ""
+      if (capitalFirstLetter) {
+        const upperCaseCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        tempPassword +=
+          upperCaseCharset[Math.floor(Math.random() * upperCaseCharset.length)]
+      }
+      tempPassword += Array(length - tempPassword.length)
         .fill(charset)
         .map((x) => x[Math.floor(Math.random() * x.length)])
         .join("")
+
+      password = tempPassword
     }
 
-    if (capitalFirstLetter) {
-      password = password.charAt(0).toUpperCase() + password.slice(1)
-    }
+    // if (capitalFirstLetter) {
+    //   password = password.charAt(0).toUpperCase() + password.slice(1)
+    // }
 
     setPassword(password)
   }
@@ -64,17 +71,24 @@ export default function Generate() {
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value
-    if (newValue === "" || isNaN(Number(newValue))) {
+
+    if (newValue === "") {
       setLength(0)
-    } else {
+    } else if (!isNaN(Number(newValue))) {
       const value = Number(newValue)
-      if (value >= 1 && value <= 100) {
+      if (value >= 4 && value <= 100) {
         setLength(value)
-      } else if (value < 1) {
-        setLength(1)
+      } else if (value < 4) {
+        setLength(value)
       } else {
         setLength(100)
       }
+    }
+  }
+
+  const handleInputBlur = () => {
+    if (length <= 4) {
+      setLength(4)
     }
   }
 
@@ -155,7 +169,7 @@ export default function Generate() {
               onChange={handleSliderChange}
               aria-labelledby="password-length-slider"
               valueLabelDisplay="auto"
-              min={1}
+              min={4}
               max={100}
               style={{ flex: 1, marginLeft: 8, marginRight: 220 }}
             />
@@ -165,6 +179,7 @@ export default function Generate() {
               type="text"
               value={length}
               onChange={handleInputChange}
+              onBlur={handleInputBlur}
               aria-labelledby="password-length-slider"
               pattern="[0-9]*"
               inputMode="numeric"
@@ -185,10 +200,12 @@ export default function Generate() {
       <div className="plasmo-w-80.5 plasmo-mt-10">
         <Button
           variant="contained"
-          color="primary"
+          sx={{ backgroundColor: "#0570EB", color: "#fff", width: "100%" }}
           fullWidth
           onClick={generatePassword}>
-          Generate
+          <span className="plasmo-font-['Inter'] plasmo-font-[15px]">
+            Generate
+          </span>
         </Button>
       </div>
     </div>
