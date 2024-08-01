@@ -58,10 +58,6 @@ export default function Generate() {
       password = tempPassword
     }
 
-    // if (capitalFirstLetter) {
-    //   password = password.charAt(0).toUpperCase() + password.slice(1)
-    // }
-
     setPassword(password)
   }
 
@@ -105,7 +101,7 @@ export default function Generate() {
         className="plasmo-w-80.5 plasmo-h-10 plasmo-flex plasmo-justify-between plasmo-items-center plasmo-rounded-[6px] plasmo-bg-white plasmo-px-5 plasmo-mt-5"
         style={{
           boxShadow:
-            "0px 1px 2px 0px rgba(60, 64, 67, 0.30), 0px 2px 8px 8px rgba(60, 64, 67, 0.15)"
+            "0px 1px 2px 0px rgba(60, 64, 67, 0.30), 0px 2px 3px 1px rgba(60, 64, 67, 0.15)"
         }}>
         <p
           className="plasmo-flex-grow plasmo-flex-shrink plasmo-truncate"
@@ -133,9 +129,12 @@ export default function Generate() {
           borderRadius: 6,
           background: "#FFF",
           boxShadow:
-            "0px 1px 2px 0px rgba(60, 64, 67, 0.30), 0px 2px 8px 8px rgba(60, 64, 67, 0.15)"
+            "0px 1px 2px 0px rgba(60, 64, 67, 0.30), 0px 2px 4px 2px rgba(60, 64, 67, 0.15)"
         }}>
-        <Typography gutterBottom>Your password includes</Typography>
+        <Typography gutterBottom>
+          <span className="plasmo-font-medium">Your password includes</span>
+        </Typography>
+
         <div className="plasmo-flex plasmo-gap-4 plasmo-h-10 plasmo-mt-2">
           <ButtonCheckbox
             id="1"
@@ -197,13 +196,17 @@ export default function Generate() {
           </div>
         </div>
       </div>
-      <div className="plasmo-w-80.5 plasmo-mt-10">
+      <div className="plasmo-w-80.5 plasmo-mt-3">
         <Button
           variant="contained"
-          sx={{ backgroundColor: "#0570EB", color: "#fff", width: "100%" }}
+          sx={{
+            backgroundColor: "#0570EB",
+            color: "#fff",
+            width: "100%"
+          }}
           fullWidth
           onClick={generatePassword}>
-          <span className="plasmo-font-['Inter'] plasmo-font-[15px]">
+          <span className="plasmo-font-['Inter'] plasmo-font-medium">
             Generate
           </span>
         </Button>

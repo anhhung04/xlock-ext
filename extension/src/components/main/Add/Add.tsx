@@ -167,12 +167,12 @@ export default function Add() {
           </div>
           <button
             type="submit"
-            className="plasmo-h-10 plasmo-border plasmo-rounded-md plasmo-mb-1"
+            className="plasmo-h-10 plasmo-border plasmo-rounded-md plasmo-mb-1 "
             style={{ backgroundColor: "#0570EB", width: 310 }}>
             <span
               className="plasmo-text-white plasmo-text-base plasmo-font-semibold"
               style={{ fontFamily: "Inter" }}>
-              Add
+              Save
             </span>
           </button>
         </form>

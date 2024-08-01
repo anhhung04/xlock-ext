@@ -22,7 +22,7 @@ export default function Account() {
       </p>
 
       <button
-        className="plasmo-flex plasmo-h-10 plasmo-px-4 plasmo-py-2.5 plasmo-justify-center plasmo-items-center plasmo-gap-5 plasmo-shrink-0 plasmo-mt-40"
+        className="plasmo-flex plasmo-h-10 plasmo-px-4 plasmo-py-2.5 plasmo-justify-center plasmo-items-center plasmo-gap-5 plasmo-shrink-0 plasmo-mt-40 hover:plasmo-scale-110 active:plasmo-scale-90"
         style={{ borderRadius: 14, border: "2px solid #29428D", width: 310 }}
         onClick={handleOnClick}>
         <span
