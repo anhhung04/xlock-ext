@@ -1,6 +1,6 @@
 import React from "react"
 
-function Modal({ onClose, onAddAccount, onGenerateKey }) {
+function Modal({ onClose, onAddAccount }) {
   return (
     <div
       style={{
@@ -38,14 +38,7 @@ function Modal({ onClose, onAddAccount, onGenerateKey }) {
             Add Account
           </span>
         </button>
-        <button
-          onClick={onGenerateKey}
-          style={{ margin: "5px", backgroundColor: "#0570EB" }}
-          className="plasmo-h-10 plasmo-border plasmo-rounded-md">
-          <span className="plasmo-text-white plasmo-text-base plasmo-font-normal plasmo-font-['Inter']">
-            Generate new key
-          </span>
-        </button>
+
         <button
           onClick={onClose}
           style={{ margin: "5px", backgroundColor: "#0570EB" }}

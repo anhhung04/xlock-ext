@@ -1,5 +1,7 @@
 import React, { useState } from "react"
 
+import { sendToContentScript } from "@plasmohq/messaging"
+
 import { apiCall } from "~services/api/api"
 import { getSessionToken } from "~services/token/get.session.token"
 
@@ -55,6 +57,8 @@ export default function Add() {
         }
       })
     })
+
+    sendToContentScript({ name: "content", body: { type: "refreshFetch" } })
 
     console.log(responseData)
     setShowModal(true)

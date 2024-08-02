@@ -1,6 +1,4 @@
-import React, { useState } from "react"
-
-import { sendToContentScript } from "@plasmohq/messaging"
+import React, { useRef, useState } from "react"
 
 import Button from "./Button"
 
@@ -21,29 +19,25 @@ export default function AccountCard({
   credentials
 }: UserInfo) {
   const [isChecked, setIsChecked] = useState<boolean>(false)
+  const icon = chrome.runtime.getURL(`assets/copy.svg`)
 
-  function handleCheck(isChecked: boolean): void {
-    setIsChecked(isChecked)
+  function handleCheck() {
+    setIsChecked((prev) => !prev)
   }
 
-  const handleClick = async () => {
-    console.log({
-      type: "AUTOFILL_CREDENTIALS",
-      username: credentials.username,
-      password: credentials.password
-    })
-
-    const message: { name: string; password: string } = {
-      name: credentials.username,
-      password: credentials.password
-    }
-
-    const response = await sendToContentScript(message)
+  function copyToClipboard(value: string) {
+    navigator.clipboard
+      .writeText(value)
+      .then(() => {
+        console.log("Text copied to clipboard")
+      })
+      .catch((err) => {
+        console.error("Failed to copy text: ", err)
+      })
   }
 
   return (
     <div
-      onClick={handleClick}
       className="plasmo-flex plasmo-flex-col plasmo-gap-2 plasmo-items-start plasmo-justify-start plasmo-h-56 plasmo-p-4 hover:plasmo-cursor-pointer"
       style={{
         borderRadius: 12,
@@ -69,7 +63,7 @@ export default function AccountCard({
           Username
         </p>
         <div
-          className="plasmo-flex plasmo-flex-col plasmo-justify-center plasmo-h-10 plasmo-gap-2"
+          className="plasmo-flex plasmo-items-center plasmo-h-10 plasmo-pr-[10px]"
           style={{
             borderRadius: 12,
             border: "1px solid #D1D3D3",
@@ -81,6 +75,17 @@ export default function AccountCard({
             style={{ fontFamily: "Inter" }}>
             {isChecked ? credentials.username : "********"}
           </p>
+          <button
+            className="hover:plasmo-scale-110 transition active:plasmo-scale-90"
+            onClick={() => copyToClipboard(credentials.username)}
+            style={{
+              backgroundImage: `url(${icon})`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "contain",
+              width: "20px",
+              height: "20px",
+              marginLeft: "auto"
+            }}></button>
         </div>
       </div>
       <div className="plasmo-flex plasmo-flex-col">
@@ -90,7 +95,7 @@ export default function AccountCard({
           Password
         </p>
         <div
-          className="plasmo-flex plasmo-flex-col plasmo-justify-center plasmo-items-start plasmo-h-10 plasmo-gap-2"
+          className="plasmo-flex  plasmo-items-center  plasmo-h-10 plasmo-pr-[10px]"
           style={{
             borderRadius: 12,
             border: "1px solid #D1D3D3",
@@ -102,6 +107,17 @@ export default function AccountCard({
             style={{ fontFamily: "Inter" }}>
             {"********"}
           </p>
+          <button
+            className="hover:plasmo-scale-110 transition active:plasmo-scale-90"
+            onClick={() => copyToClipboard(credentials.password)}
+            style={{
+              backgroundImage: `url(${icon})`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "contain",
+              width: "20px",
+              height: "20px",
+              marginLeft: "auto"
+            }}></button>
         </div>
       </div>
     </div>

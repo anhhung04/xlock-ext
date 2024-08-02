@@ -97,7 +97,10 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
     return true
   } else if (request.body.action === "redirectURL") {
-    chrome.tabs.update(sender.tab.id, { url: request.body.url })
+    chrome.tabs.create({
+      url: request.body.url
+    })
+    return true
   } else if (request.body.action === "fetchAccountCards") {
     const responseData = await fetch("http://localhost:5000/account", {
       method: "GET",
@@ -107,5 +110,74 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
     const data: AccountCardInfo[] = await responseData.json()
     sendResponse(data)
+    return true
+  } else if (request.body.action === "openPopup") {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("popup.html")
+    })
+    return true
+  } else if (request.body.action === "checkPassword") {
+    try {
+      chrome.storage.local.get("salt", async (result) => {
+        const { crypto } = global
+
+        const salt = result.salt
+
+        const encoder = new TextEncoder()
+
+        const derivationKey = await crypto.subtle.importKey(
+          "raw",
+          encoder.encode(request.body.password),
+          { name: "PBKDF2" },
+          false,
+          ["deriveKey"]
+        )
+
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: encoder.encode(salt),
+            iterations: 1000,
+            hash: "SHA-256"
+          },
+          derivationKey,
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"]
+        )
+
+        const exportedKey = await self.crypto.subtle.exportKey("raw", key)
+
+        let binary = ""
+        const bytes = new Uint8Array(exportedKey)
+        const len = bytes.byteLength
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i])
+        }
+        const hashPassword = btoa(binary)
+
+        const responseData = await fetch(
+          "http://localhost:8000/api/auth/login",
+          {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json"
+            },
+            body: JSON.stringify({
+              Password: hashPassword
+            })
+          }
+        )
+        if (responseData.status === 200) {
+          sendResponse({ success: true })
+        } else {
+          sendResponse({ success: false })
+        }
+      })
+    } catch (error) {
+      console.log("ERROR:::", error)
+    }
+
+    return true
   }
 })

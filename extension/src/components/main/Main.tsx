@@ -16,10 +16,6 @@ export default function Main({ loginSuccess }) {
     setPage("add")
   }
 
-  function handleHomeSetGenerate() {
-    setPage("generate")
-  }
-
   return (
     <div className="plasmo-flex plasmo-flex-col plasmo-w-90 plasmo-h-145 plasmo-max-h-145 plasmo-border">
       <div
@@ -38,11 +34,7 @@ export default function Main({ loginSuccess }) {
         </p>
       </div>
       {page === "home" && (
-        <Home
-          loginSuccess={loginSuccess}
-          onAddAccount={handleHomeSetAdd}
-          onGenerateKey={handleHomeSetGenerate}
-        />
+        <Home loginSuccess={loginSuccess} onAddAccount={handleHomeSetAdd} />
       )}
       {page === "add" && <Add />}
       {page === "generate" && <Generate />}

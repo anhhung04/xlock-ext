@@ -60,7 +60,7 @@ function attachXLockButton(
 }
 
 function createXLockButton(
-  passwordField: HTMLInputElement,
+  inputField: HTMLInputElement,
   id: string
 ): HTMLElement {
   const xLockButton = document.createElement("x-lock")
@@ -84,18 +84,18 @@ function createXLockButton(
     backgroundRepeat: "no-repeat"
   })
 
-  positionXLockButton(xLockButton, passwordField)
+  positionXLockButton(xLockButton, inputField)
 
-  attachPopupToXLockButton(xLockButton, passwordField)
+  attachPopupToXLockButton(xLockButton, inputField)
   return xLockButton
 }
 
 function positionXLockButton(
   xLockButton: HTMLElement,
-  passwordField: HTMLInputElement
+  inputField: HTMLInputElement
 ) {
   let cumulativeHeight = 0
-  let currentElement = passwordField.previousElementSibling
+  let currentElement = inputField.previousElementSibling
 
   while (currentElement) {
     const currentElementRect = currentElement.getBoundingClientRect()
@@ -104,20 +104,17 @@ function positionXLockButton(
   }
 
   let revealButtonLength = 0
-  if (passwordField.nextElementSibling) {
-    const revealButton =
-      passwordField.nextElementSibling.getBoundingClientRect()
+  if (inputField.nextElementSibling) {
+    const revealButton = inputField.nextElementSibling.getBoundingClientRect()
     revealButtonLength += revealButton.width
   }
 
-  const rect = passwordField.getBoundingClientRect()
+  const rect = inputField.getBoundingClientRect()
   const { top, bottom, left, right } = rect
 
-  const computedStyle = window.getComputedStyle(passwordField)
+  const computedStyle = window.getComputedStyle(inputField)
   const paddingRight = parseFloat(computedStyle.paddingRight)
-  const parentComputedStyle = window.getComputedStyle(
-    passwordField.closest("div")
-  )
+  const parentComputedStyle = window.getComputedStyle(inputField.closest("div"))
   const paddingTop = parseFloat(parentComputedStyle.paddingTop)
   const padRight = parseFloat(parentComputedStyle.paddingRight)
   const borderRightWidth = parseFloat(parentComputedStyle.borderRightWidth)
@@ -175,21 +172,29 @@ function attachPopupToXLockButton(
 
   inputField.addEventListener("focus", () => {
     xLockButton.style.opacity = "1"
-  })
 
-  inputField.addEventListener("blur", () => {
     inputField.addEventListener("mouseover", () => {
       xLockButton.style.opacity = "1"
     })
     inputField.addEventListener("mouseout", () => {
-      xLockButton.style.opacity = "0"
+      if (!document.activeElement.isEqualNode(inputField)) {
+        xLockButton.style.opacity = "0"
+      }
     })
     xLockButton.addEventListener("mouseover", () => {
       xLockButton.style.opacity = "1"
     })
     xLockButton.addEventListener("mouseout", () => {
-      xLockButton.style.opacity = "0"
+      if (!document.activeElement.isEqualNode(inputField)) {
+        xLockButton.style.opacity = "0"
+      }
     })
+  })
+
+  inputField.addEventListener("blur", () => {
+    if (!inputField.matches(":hover") && !xLockButton.matches(":hover")) {
+      xLockButton.style.opacity = "0"
+    }
   })
 }
 
@@ -228,8 +233,8 @@ function createLoginPopup(inputField: HTMLInputElement): HTMLElement {
   Object.assign(title.style, {
     fontSize: "15px",
     fontFamily: "Inter",
-    fontWeight: "normal",
-    marginBottom: "20px"
+    marginBottom: "20px",
+    fontWeight: 600
   })
   title.textContent = "Log in to XLock to fill credentials"
   container.appendChild(title)
@@ -249,7 +254,8 @@ function createLoginPopup(inputField: HTMLInputElement): HTMLElement {
     userSelect: "none",
     zIndex: 1000,
     backgroundColor: "#0570EB",
-    fontFamily: "Inter"
+    fontFamily: "Inter",
+    fontWeight: 600
   })
   loginButton.textContent = "Log in"
 
@@ -262,18 +268,18 @@ function createLoginPopup(inputField: HTMLInputElement): HTMLElement {
   return checkLoginPopup
 }
 
-function createAutofillPopup(passwordField: HTMLInputElement): HTMLElement {
+function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
   const autofillPopup = document.createElement("div")
   autofillPopup.className = "autofill-popup"
   Object.assign(autofillPopup.style, {
     display: "none",
     position: "fixed",
     backgroundColor: "white",
-    zIndex: "1000",
+    zIndex: "10000",
     width: "330px",
     height: "auto",
-    top: `${passwordField.getBoundingClientRect().bottom + 5}px`,
-    left: `${passwordField.getBoundingClientRect().left}px`,
+    top: `${inputField.getBoundingClientRect().bottom + 5}px`,
+    left: `${inputField.getBoundingClientRect().left}px`,
     padding: "0px",
     margin: "0px",
     border: "1px solid #ccc",
@@ -290,90 +296,147 @@ function createAutofillPopup(passwordField: HTMLInputElement): HTMLElement {
     flexDirection: "column",
     paddingLeft: "10px",
     paddingRight: "10px",
-    paddingTop: "20px",
+    paddingTop: "10px",
     paddingBottom: "20px",
     gap: "10px"
   })
 
   autofillPopup.appendChild(accountBody)
 
-  sendToBackground({
-    name: "ping",
-    body: {
-      action: "fetchAccountCards"
-    }
-  }).then((response) => {
-    const accountCards = response
+  function fetchAccountCards(accountBody: HTMLElement) {
+    accountBody.innerHTML = ""
+    sendToBackground({
+      name: "ping",
+      body: {
+        action: "fetchAccountCards"
+      }
+    }).then((response) => {
+      const accountCards = response
 
-    const accounts = accountCards.map((card) => ({
-      credentialID: card.credentialID,
-      credentials: card.credentials
-    }))
+      if (accountCards.length > 0) {
+        const accounts = accountCards.map((card) => ({
+          credentialID: card.credentialID,
+          credentials: card.credentials
+        }))
 
-    accounts.forEach((account) => {
-      const accountOption = document.createElement("div")
-      accountOption.className = "account-option"
-      Object.assign(accountOption.style, {
-        display: "flex",
-        gap: "10px",
-        border: "1px solid #000",
-        borderRadius: "14px",
-        height: "50px",
-        alignItems: "center",
-        paddingLeft: "10px",
-        paddingRight: "10px"
-      })
+        accounts.forEach((account) => {
+          const accountOption = document.createElement("div")
+          accountOption.className = "account-option"
+          Object.assign(accountOption.style, {
+            display: "flex",
+            gap: "10px",
+            border: "1px solid #000",
+            borderRadius: "14px",
+            height: "50px",
+            alignItems: "center",
+            paddingLeft: "10px",
+            paddingRight: "10px"
+          })
 
-      const accountOptionImage = document.createElement(
-        "img"
-      ) as HTMLImageElement
-      accountOptionImage.className = "account-image"
-      accountOptionImage.width = 40
-      accountOptionImage.height = 40
+          const accountOptionImage = document.createElement(
+            "img"
+          ) as HTMLImageElement
+          accountOptionImage.className = "account-image"
+          accountOptionImage.width = 40
+          accountOptionImage.height = 40
 
-      sendToBackground({
-        name: "ping",
-        body: {
-          action: "getTabIcon"
-        }
-      }).then((response) => {
-        accountOptionImage.src = response.iconUrl
-      })
+          sendToBackground({
+            name: "ping",
+            body: {
+              action: "getTabIcon"
+            }
+          }).then((response) => {
+            accountOptionImage.src = response.iconUrl
+          })
 
-      const accountOptionInfor = document.createElement("div")
-      accountOptionInfor.className = "account-info"
-      accountOptionInfor.style.display = "flex"
-      accountOptionInfor.style.flexDirection = "column"
+          const accountOptionInfor = document.createElement("div")
+          accountOptionInfor.className = "account-info"
+          accountOptionInfor.style.display = "flex"
+          accountOptionInfor.style.flexDirection = "column"
 
-      const accountOptionID = document.createElement("div")
-      accountOptionID.className = "account-option-ID"
-      accountOptionID.textContent = account.credentialID
-      accountOptionID.style.fontFamily = "Inter"
-      accountOptionID.style.fontSize = "14px"
-      accountOptionID.style.fontWeight = "400"
+          const accountOptionID = document.createElement("div")
+          accountOptionID.className = "account-option-ID"
+          accountOptionID.textContent = account.credentialID
+          accountOptionID.style.fontFamily = "Inter"
+          accountOptionID.style.fontSize = "14px"
+          accountOptionID.style.fontWeight = "400"
 
-      const accountOptionUsername = document.createElement("div")
-      accountOptionUsername.className = "account-option-username"
-      accountOptionUsername.textContent = account.credentials.username
-      accountOptionUsername.style.fontFamily = "Inter"
-      accountOptionUsername.style.fontSize = "14px"
-      accountOptionUsername.style.fontWeight = "400"
+          const accountOptionUsername = document.createElement("div")
+          accountOptionUsername.className = "account-option-username"
+          accountOptionUsername.textContent = account.credentials.username
+          accountOptionUsername.style.fontFamily = "Inter"
+          accountOptionUsername.style.fontSize = "14px"
+          accountOptionUsername.style.fontWeight = "400"
 
-      accountOption.addEventListener("click", () => {
-        autofillCredentials(
-          account.credentials.username,
-          account.credentials.password
-        )
-        autofillPopup.style.display = "none"
-      })
+          accountOption.addEventListener("click", () => {
+            autofillCredentials(
+              account.credentials.username,
+              account.credentials.password
+            )
+            autofillPopup.style.display = "none"
+          })
 
-      accountOptionInfor.appendChild(accountOptionID)
-      accountOptionInfor.appendChild(accountOptionUsername)
-      accountOption.appendChild(accountOptionImage)
-      accountOption.appendChild(accountOptionInfor)
-      accountBody.appendChild(accountOption)
+          accountOptionInfor.appendChild(accountOptionID)
+          accountOptionInfor.appendChild(accountOptionUsername)
+          accountOption.appendChild(accountOptionImage)
+          accountOption.appendChild(accountOptionInfor)
+          accountBody.appendChild(accountOption)
+        })
+      } else if (accountCards.length === 0) {
+        const title = document.createElement("p")
+        title.className = "account-body-title"
+        Object.assign(title.style, {
+          fontWeight: 600,
+          fontFamily: "Inter",
+          fontSize: "14px",
+          zIndex: 1000
+        })
+        title.textContent = "Doesn't have account yet?"
+        accountBody.appendChild(title)
+
+        const addButton = document.createElement("div")
+        addButton.className = "add-account-button"
+        Object.assign(addButton.style, {
+          display: "flex",
+          justifyContent: "center",
+          padding: "10px 20px",
+          fontSize: "16px",
+          color: "white",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+          textAlign: "center",
+          userSelect: "none",
+          zIndex: 1000,
+          backgroundColor: "#0570EB",
+          fontFamily: "Inter",
+          fontWeight: 600
+        })
+        addButton.textContent = "Add Account to XLock"
+
+        addButton.addEventListener("click", () => {
+          sendToBackground({
+            name: "ping",
+            body: {
+              action: "openPopup"
+            }
+          }).then(() => console.log("SEND MESSAGE POPUP SUCCESS"))
+        })
+
+        accountBody.appendChild(addButton)
+      } else {
+        console.log("SOME THING WRONG ???")
+      }
     })
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.body.type === "refreshFetch") {
+      fetchAccountCards(accountBody)
+    }
   })
+
+  fetchAccountCards(accountBody)
 
   return autofillPopup
 }
@@ -427,7 +490,7 @@ const detectInputField = () => {
   }
 
   const usernameFields = document.querySelectorAll(
-    'input[type="text"], input[type="email"]'
+    'input[type="text"], input[type="email"], input[name="username"]'
   )
   const passwordFields = document.querySelectorAll('input[type="password"]')
   usernameFields.forEach((inputField) =>

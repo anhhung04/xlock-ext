@@ -26,14 +26,9 @@ interface AccountCardInfo {
 interface HomeProps {
   loginSuccess: boolean
   onAddAccount: () => void
-  onGenerateKey: () => void
 }
 
-export default function Home({
-  loginSuccess,
-  onAddAccount,
-  onGenerateKey
-}: HomeProps) {
+export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
   const [tabInfo, setTabInfo] = useState<TabInfo>({ title: "", favicon: "" })
   const [accountCards, setAccountCards] = useState<AccountCardInfo[]>([])
   const [showModal, setShowModal] = useState<boolean>(false)
@@ -84,8 +79,6 @@ export default function Home({
       const listAccountCards: AccountCardInfo[] = await responseData.json()
       setAccountCards(listAccountCards)
 
-      console.log(listAccountCards)
-
       if (listAccountCards.length === 0) {
         setShowModal(true)
       }
@@ -127,11 +120,6 @@ export default function Home({
   const handleAddAccount = () => {
     setShowModal(false)
     onAddAccount()
-  }
-
-  const handleGenerateKey = () => {
-    setShowModal(false)
-    onGenerateKey()
   }
 
   const handleEditClick = async () => {
@@ -205,7 +193,6 @@ export default function Home({
           <Modal
             onClose={() => setShowModal(false)}
             onAddAccount={handleAddAccount}
-            onGenerateKey={handleGenerateKey}
           />
         )}
       </div>
