@@ -11,6 +11,8 @@ import { getSessionToken } from "~services/token/get.session.token"
 
 import "~style.css"
 
+import { sendToContentScript } from "@plasmohq/messaging"
+
 import Signup from "~components/signup/Signup"
 import { decryptMessage } from "~services/crypto/decrypt.message"
 import { getInitializationVector } from "~services/initializationVector/get.vector"
@@ -28,7 +30,6 @@ function IndexPopup() {
       try {
         const tokenResponse = await getEncryptedToken()
         if (tokenResponse) {
-          console.log(tokenResponse)
         } else {
           return <Signup />
         }
@@ -45,7 +46,6 @@ function IndexPopup() {
       try {
         const tokenResponse = await getSessionToken()
         if (tokenResponse) {
-          console.log(tokenResponse)
           setLoginSuccess(true)
           setIsLogin(true)
         }
@@ -100,7 +100,11 @@ function IndexPopup() {
 
       const isSuccess = responseData && responseData["code"] === 200
       if (isSuccess) {
-        await saveSessionToken(decryptedToken)
+        saveSessionToken(decryptedToken)
+        sendToContentScript({
+          name: "content",
+          body: { type: "refresh" }
+        })
         setIncorrectAttempts(0)
         setIsLogin(true)
         setLoginSuccess(true)

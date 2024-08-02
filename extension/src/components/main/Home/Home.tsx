@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react"
 
+import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
+
 import { apiCall } from "~services/api/api"
 import { getSessionToken } from "~services/token/get.session.token"
 
@@ -11,14 +13,14 @@ interface TabInfo {
   favicon: string
 }
 
-interface credentials {
+interface Credentials {
   username: string
   password: string
 }
 
 interface AccountCardInfo {
   credentialID: string
-  credentials: credentials
+  credentials: Credentials
 }
 
 interface HomeProps {
@@ -35,6 +37,7 @@ export default function Home({
   const [tabInfo, setTabInfo] = useState<TabInfo>({ title: "", favicon: "" })
   const [accountCards, setAccountCards] = useState<AccountCardInfo[]>([])
   const [showModal, setShowModal] = useState<boolean>(false)
+  const icon = chrome.runtime.getURL(`assets/Edit.svg`)
 
   const getURL = () => {
     return new Promise((resolve, reject) => {
@@ -80,6 +83,8 @@ export default function Home({
 
       const listAccountCards: AccountCardInfo[] = await responseData.json()
       setAccountCards(listAccountCards)
+
+      console.log(listAccountCards)
 
       if (listAccountCards.length === 0) {
         setShowModal(true)
@@ -129,6 +134,20 @@ export default function Home({
     onGenerateKey()
   }
 
+  const handleEditClick = async () => {
+    try {
+      sendToBackground({
+        name: "ping",
+        body: {
+          action: "redirectURL",
+          url: "http://localhost:3000"
+        }
+      })
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   return (
     <div className="" style={{ height: 472 }}>
       <div className="plasmo-mt-3.5 plasmo-px-5 plasmo-flex plasmo-justify-between plasmo-items-center plasmo-gap-4">
@@ -153,14 +172,17 @@ export default function Home({
           </p>
         </div>
         <div className="plasmo-w-13 plasmo-inline-block">
-          <button>
-            <img
-              src="D:\ProgrammingCode\Chrome Extension\Plasmo\xlock-extension\extension\assets\option.png"
-              width={28}
-              height={28}
-              className="plasmo-max-w-7eplasmo-h-7 plasmo-my-2.5 plasmo-mx-1.5"
-            />
-          </button>
+          <div
+            className="active:plasmo-scale-110"
+            onClick={handleEditClick}
+            style={{
+              backgroundImage: `url(${icon})`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "contain",
+              width: 30,
+              height: 30,
+              cursor: "pointer"
+            }}></div>
         </div>
       </div>
       <div

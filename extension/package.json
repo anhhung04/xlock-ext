@@ -69,7 +69,8 @@
         "resources": [
           "assets/icon.png",
           "assets/checked.svg",
-          "assets/copy.svg"
+          "assets/copy.svg",
+          "assets/Edit.svg"
         ],
         "matches": [
           "<all_urls>"

@@ -1,32 +1,19 @@
 export default function requestHashPassword(
-  password: string
-): Promise<{ password: CryptoKey; salt: string }> {
+  password: string,
+  salt?: string
+): Promise<{ password: string; salt: string }> {
   return new Promise((resolve, reject) => {
     const id = "dcdmepeacagahbdammaepndegcomiikm"
 
     chrome.runtime.sendMessage(
       id,
-      { type: "REQUEST_HASH_PASSWORD", password: password },
+      { type: "REQUEST_HASH_PASSWORD", password: password, salt: salt },
       async (res: { success: boolean; password: string; salt: string }) => {
         if (res.success) {
           try {
-            const binaryString = atob(res.password)
-            const len = binaryString.length
-            const bytes = new Uint8Array(len)
-            for (let i = 0; i < len; i++) {
-              bytes[i] = binaryString.charCodeAt(i)
-            }
-            const arrayBuffer = bytes.buffer
-            const importedKey = await window.crypto.subtle.importKey(
-              "raw",
-              arrayBuffer,
-              { name: "AES-GCM", length: 256 },
-              true,
-              ["encrypt", "decrypt"]
-            )
-            resolve({ password: importedKey, salt: res.salt })
+            resolve({ password: password, salt: res.salt })
           } catch (error) {
-            reject(new Error("Error importing CryptoKey: " + error))
+            reject(new Error("Error hasing password " + error))
           }
         } else {
           reject(new Error("There is some error"))

@@ -1,4 +1,3 @@
-import { request } from "http"
 import type { PlasmoCSConfig } from "plasmo"
 
 import { sendToBackground } from "@plasmohq/messaging"
@@ -8,12 +7,15 @@ export const config: PlasmoCSConfig = {
   exclude_matches: ["http://localhost:*/*"]
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  autofillCredentials(message.name, message.password)
+interface Credentials {
+  username: string
+  password: string
+}
 
-  sendResponse({ success: true, data: "Message handled successfully" })
-  return true
-})
+interface AccountCardInfo {
+  credentialID: string
+  credentials: Credentials
+}
 
 function autofillCredentials(username: string, password: string) {
   const usernameField = document.querySelector(
@@ -128,12 +130,48 @@ function positionXLockButton(
   })
 }
 
+function updatePopup(popup: HTMLElement, xLockButton: HTMLElement) {
+  document.body.appendChild(popup)
+
+  xLockButton.addEventListener("click", () => {
+    popup.style.display = popup.style.display === "none" ? "flex" : "none"
+  })
+}
+
 function attachPopupToXLockButton(
   xLockButton: HTMLElement,
   inputField: HTMLInputElement
 ) {
-  const autofillPopup = createAutofillPopup(inputField)
-  document.body.appendChild(autofillPopup)
+  function removeExistingPopup() {
+    const existingPopups = document.querySelectorAll(
+      ".popup, .checklogin-popup, .container-button"
+    )
+    existingPopups.forEach((popup) => popup.remove())
+  }
+
+  function checkSession() {
+    chrome.runtime.sendMessage(
+      { action: "getSessionToken", key: "userToken" },
+      function (result) {
+        removeExistingPopup()
+        if (result.value) {
+          const autofillPopup = createAutofillPopup(inputField)
+          updatePopup(autofillPopup, xLockButton)
+        } else {
+          const loginPopup = createLoginPopup(inputField)
+          updatePopup(loginPopup, xLockButton)
+        }
+      }
+    )
+  }
+
+  checkSession()
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.body.type === "refresh") {
+      checkSession()
+    }
+  })
 
   inputField.addEventListener("focus", () => {
     xLockButton.style.opacity = "1"
@@ -153,11 +191,75 @@ function attachPopupToXLockButton(
       xLockButton.style.opacity = "0"
     })
   })
+}
 
-  xLockButton.addEventListener("click", () => {
-    autofillPopup.style.display =
-      autofillPopup.style.display === "none" ? "flex" : "none"
+function createLoginPopup(inputField: HTMLInputElement): HTMLElement {
+  const checkLoginPopup = document.createElement("div")
+  checkLoginPopup.className = "checklogin-popup"
+  Object.assign(checkLoginPopup.style, {
+    display: "none",
+    position: "fixed",
+    backgroundColor: "white",
+    zIndex: "1000",
+    width: "330px",
+    height: "auto",
+    top: `${inputField.getBoundingClientRect().bottom + 5}px`,
+    left: `${inputField.getBoundingClientRect().left}px`,
+    padding: "0px",
+    margin: "0px",
+    border: "1px solid #ccc",
+    flexDirection: "column"
   })
+
+  const popupHeader = createAutofillPopupHeader()
+  checkLoginPopup.appendChild(popupHeader)
+
+  const container = document.createElement("div")
+  container.className = "container-button"
+  Object.assign(container.style, {
+    display: "flex",
+    padding: "20px",
+    flexDirection: "column"
+  })
+  checkLoginPopup.appendChild(container)
+
+  const title = document.createElement("p")
+  title.className = "title-button"
+  Object.assign(title.style, {
+    fontSize: "15px",
+    fontFamily: "Inter",
+    fontWeight: "normal",
+    marginBottom: "20px"
+  })
+  title.textContent = "Log in to XLock to fill credentials"
+  container.appendChild(title)
+
+  const loginButton = document.createElement("div")
+  loginButton.className = "login-button"
+  Object.assign(loginButton.style, {
+    display: "flex",
+    justifyContent: "center",
+    padding: "10px 20px",
+    fontSize: "16px",
+    color: "white",
+    border: "none",
+    borderRadius: "12px",
+    cursor: "pointer",
+    textAlign: "center",
+    userSelect: "none",
+    zIndex: 1000,
+    backgroundColor: "#0570EB",
+    fontFamily: "Inter"
+  })
+  loginButton.textContent = "Log in"
+
+  loginButton.addEventListener("click", () => {
+    window.open("http://localhost:3000", "_blank")
+  })
+
+  container.appendChild(loginButton)
+
+  return checkLoginPopup
 }
 
 function createAutofillPopup(passwordField: HTMLInputElement): HTMLElement {
@@ -181,19 +283,6 @@ function createAutofillPopup(passwordField: HTMLInputElement): HTMLElement {
   const autofillPopupHeader = createAutofillPopupHeader()
   autofillPopup.appendChild(autofillPopupHeader)
 
-  const accounts = [
-    {
-      name: "Facebook",
-      username: "user1",
-      password: "password1"
-    },
-    {
-      name: "Google",
-      username: "user2",
-      password: "password2"
-    }
-  ]
-
   const accountBody = document.createElement("div")
   accountBody.className = "account-body"
   Object.assign(accountBody.style, {
@@ -208,63 +297,82 @@ function createAutofillPopup(passwordField: HTMLInputElement): HTMLElement {
 
   autofillPopup.appendChild(accountBody)
 
-  accounts.forEach((account) => {
-    const accountOption = document.createElement("div")
-    accountOption.className = "account-option"
-    Object.assign(accountOption.style, {
-      display: "flex",
-      gap: "10px",
-      border: "1px solid #000",
-      borderRadius: "14px",
-      height: "50px",
-      alignItems: "center",
-      paddingLeft: "10px",
-      paddingRight: "10px"
+  sendToBackground({
+    name: "ping",
+    body: {
+      action: "fetchAccountCards"
+    }
+  }).then((response) => {
+    const accountCards = response
+
+    const accounts = accountCards.map((card) => ({
+      credentialID: card.credentialID,
+      credentials: card.credentials
+    }))
+
+    accounts.forEach((account) => {
+      const accountOption = document.createElement("div")
+      accountOption.className = "account-option"
+      Object.assign(accountOption.style, {
+        display: "flex",
+        gap: "10px",
+        border: "1px solid #000",
+        borderRadius: "14px",
+        height: "50px",
+        alignItems: "center",
+        paddingLeft: "10px",
+        paddingRight: "10px"
+      })
+
+      const accountOptionImage = document.createElement(
+        "img"
+      ) as HTMLImageElement
+      accountOptionImage.className = "account-image"
+      accountOptionImage.width = 40
+      accountOptionImage.height = 40
+
+      sendToBackground({
+        name: "ping",
+        body: {
+          action: "getTabIcon"
+        }
+      }).then((response) => {
+        accountOptionImage.src = response.iconUrl
+      })
+
+      const accountOptionInfor = document.createElement("div")
+      accountOptionInfor.className = "account-info"
+      accountOptionInfor.style.display = "flex"
+      accountOptionInfor.style.flexDirection = "column"
+
+      const accountOptionID = document.createElement("div")
+      accountOptionID.className = "account-option-ID"
+      accountOptionID.textContent = account.credentialID
+      accountOptionID.style.fontFamily = "Inter"
+      accountOptionID.style.fontSize = "14px"
+      accountOptionID.style.fontWeight = "400"
+
+      const accountOptionUsername = document.createElement("div")
+      accountOptionUsername.className = "account-option-username"
+      accountOptionUsername.textContent = account.credentials.username
+      accountOptionUsername.style.fontFamily = "Inter"
+      accountOptionUsername.style.fontSize = "14px"
+      accountOptionUsername.style.fontWeight = "400"
+
+      accountOption.addEventListener("click", () => {
+        autofillCredentials(
+          account.credentials.username,
+          account.credentials.password
+        )
+        autofillPopup.style.display = "none"
+      })
+
+      accountOptionInfor.appendChild(accountOptionID)
+      accountOptionInfor.appendChild(accountOptionUsername)
+      accountOption.appendChild(accountOptionImage)
+      accountOption.appendChild(accountOptionInfor)
+      accountBody.appendChild(accountOption)
     })
-
-    const accountOptionImage = document.createElement("img") as HTMLImageElement
-    accountOptionImage.className = "account-image"
-    accountOptionImage.width = 40
-    accountOptionImage.height = 40
-
-    sendToBackground({
-      name: "ping",
-      body: {
-        action: "getTabIcon"
-      }
-    }).then((response) => {
-      accountOptionImage.src = response.iconUrl
-    })
-
-    const accountOptionInfor = document.createElement("div")
-    accountOptionInfor.className = "account-info"
-    accountOptionInfor.style.display = "flex"
-    accountOptionInfor.style.flexDirection = "column"
-
-    const accountOptionID = document.createElement("div")
-    accountOptionID.className = "account-option-ID"
-    accountOptionID.textContent = account.name
-    accountOptionID.style.fontFamily = "Inter"
-    accountOptionID.style.fontSize = "14px"
-    accountOptionID.style.fontWeight = "400"
-
-    const accountOptionUsername = document.createElement("div")
-    accountOptionUsername.className = "account-option-username"
-    accountOptionUsername.textContent = account.username
-    accountOptionUsername.style.fontFamily = "Inter"
-    accountOptionUsername.style.fontSize = "14px"
-    accountOptionUsername.style.fontWeight = "400"
-
-    accountOption.addEventListener("click", () => {
-      autofillCredentials(account.username, account.password)
-      autofillPopup.style.display = "none"
-    })
-
-    accountOptionInfor.appendChild(accountOptionID)
-    accountOptionInfor.appendChild(accountOptionUsername)
-    accountOption.appendChild(accountOptionImage)
-    accountOption.appendChild(accountOptionInfor)
-    accountBody.appendChild(accountOption)
   })
 
   return autofillPopup
