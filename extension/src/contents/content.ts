@@ -31,6 +31,7 @@ function autofillCredentials(username: string, password: string) {
   }
 }
 
+// step 0: check if current page is login page
 function isLoginPage() {
   const loginKeywords = ["login", "signin"]
   const signupKeywords = ["signup", "register", "registration"]
@@ -43,6 +44,7 @@ function isLoginPage() {
   )
 }
 
+// step 3: append button to each input field
 function attachXLockButton(
   inputField: HTMLInputElement,
   type: "username" | "password"
@@ -59,6 +61,7 @@ function attachXLockButton(
   parentDiv.appendChild(xLockButton)
 }
 
+// step 4: implement button after append
 function createXLockButton(
   inputField: HTMLInputElement,
   id: string
@@ -90,6 +93,7 @@ function createXLockButton(
   return xLockButton
 }
 
+// step 5: change the position of button (already handle case conflict with web reveal)
 function positionXLockButton(
   xLockButton: HTMLElement,
   inputField: HTMLInputElement
@@ -127,6 +131,7 @@ function positionXLockButton(
   })
 }
 
+// step 6b: off / on when click on button to close / open tab
 function updatePopup(popup: HTMLElement, xLockButton: HTMLElement) {
   document.body.appendChild(popup)
 
@@ -135,6 +140,7 @@ function updatePopup(popup: HTMLElement, xLockButton: HTMLElement) {
   })
 }
 
+// step 6a: check the condition when fill button appear
 function attachPopupToXLockButton(
   xLockButton: HTMLElement,
   inputField: HTMLInputElement
@@ -198,6 +204,7 @@ function attachPopupToXLockButton(
   })
 }
 
+// step 7: If user are not login, redirect to web
 function createLoginPopup(inputField: HTMLInputElement): HTMLElement {
   const checkLoginPopup = document.createElement("div")
   checkLoginPopup.className = "checklogin-popup"
@@ -268,6 +275,7 @@ function createLoginPopup(inputField: HTMLInputElement): HTMLElement {
   return checkLoginPopup
 }
 
+// step 9 : step 7 + step 8
 function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
   const autofillPopup = document.createElement("div")
   autofillPopup.className = "autofill-popup"
@@ -441,6 +449,7 @@ function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
   return autofillPopup
 }
 
+// step 8: create header for popup tab
 function createAutofillPopupHeader(): HTMLElement {
   const autofillPopupHeader = document.createElement("div")
   autofillPopupHeader.className = "autofill-popup-header"
@@ -484,6 +493,7 @@ function createAutofillPopupHeader(): HTMLElement {
   return autofillPopupHeader
 }
 
+// step 1: Detect input field
 const detectInputField = () => {
   if (!isLoginPage()) {
     return
