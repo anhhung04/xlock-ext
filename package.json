@@ -5,7 +5,7 @@
   "description": "A basic Plasmo extension.",
   "author": "quancters",
   "scripts": {
-    "dev": "plasmo dev --env=.env",
+    "dev": "plasmo dev --env=.env ",
     "build": "plasmo build",
     "package": "plasmo package"
   },

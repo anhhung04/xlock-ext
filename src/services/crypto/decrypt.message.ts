@@ -8,7 +8,7 @@ type EncryptedVault = {
 
 function base64ToBuffer(base64: string): Uint8Array {
   if (!base64) {
-    throw new Error("Invalid base64 input")
+    throw new Error("Base 64 is not valid")
   }
   const binaryString = Buffer.from(base64, "base64").toString("binary")
   const len = binaryString.length
@@ -23,17 +23,21 @@ export async function decryptMessage(
   vault: EncryptedVault,
   password: string
 ): Promise<string> {
-  const { crypto } = global
+  try {
+    const { crypto } = global
+    const { initializationVector, salt, cipherText } = vault
 
-  const { initializationVector, salt, cipherText } = vault
+    const { key } = await deriveKey(password, salt)
 
-  const { key } = await deriveKey(password, salt)
+    const decryptedData = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: base64ToBuffer(initializationVector) },
+      key,
+      base64ToBuffer(cipherText)
+    )
 
-  const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: base64ToBuffer(initializationVector) },
-    key,
-    base64ToBuffer(cipherText)
-  )
-
-  return new TextDecoder().decode(plaintext)
+    return new TextDecoder().decode(decryptedData)
+  } catch (error) {
+    console.error("Error Message:", error.message)
+    throw error
+  }
 }

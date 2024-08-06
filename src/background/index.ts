@@ -10,39 +10,25 @@ console.log("background.js is working")
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_DATA") {
     if (req.access_token) {
-      const {
-        salt,
-        initializationVector: vector_token,
-        cipherText: encryptedToken
-      } = await encryptMessage(req.access_token, req.password, req.salt)
-      chrome.storage.local.set({ userToken: encryptedToken }, () => {
+      const { salt, initializationVector, cipherText } = await encryptMessage(
+        req.access_token,
+        req.password
+      )
+      chrome.storage.local.set({ user_token: cipherText }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting token:", chrome.runtime.lastError)
           res({ success: false })
         }
       })
 
-      chrome.storage.local.set({ salt: salt }, () => {
+      chrome.storage.local.set({ salt_token: salt }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting salt:", chrome.runtime.lastError)
           res({ success: false })
         }
       })
 
-      chrome.storage.local.set(
-        { vector_private_key: req.initializationVector },
-        () => {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "Error setting vector for private key:",
-              chrome.runtime.lastError
-            )
-            res({ success: false })
-          }
-        }
-      )
-
-      chrome.storage.local.set({ vector_token: vector_token }, () => {
+      chrome.storage.local.set({ vector_token: initializationVector }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting vector token:", chrome.runtime.lastError)
           res({ success: false })

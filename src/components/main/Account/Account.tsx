@@ -1,6 +1,27 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
+
+import { apiCall } from "~services/api/api"
+import { getSessionToken } from "~services/token/get.session.token"
 
 export default function Account() {
+  const [fullname, setFullname] = useState<string>("")
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = await getSessionToken()
+      const responseData = await apiCall(
+        "/api/v1/auth/user",
+        "GET",
+        null,
+        token
+      )
+      setFullname(responseData.data.fullname)
+      console.log(fullname)
+    }
+
+    fetchUser()
+  }, [])
+
   function handleOnClick() {
     window.open(process.env.PLASMO_PUBLIC_FRONTEND_URL + "/home", "_blank")
   }
@@ -18,7 +39,7 @@ export default function Account() {
       <p
         className=" plasmo-font-bold plasmo-mb-5"
         style={{ fontSize: "22px", fontFamily: "Inter" }}>
-        Nguyen Van A
+        {fullname}
       </p>
 
       <button

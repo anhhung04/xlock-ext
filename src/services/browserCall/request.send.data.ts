@@ -1,8 +1,6 @@
 export default function requestSendData(
   access_token: string,
-  password: string,
-  salt: string,
-  initializationVector: string
+  password: string
 ): Promise<void> {
   const id = "dcdmepeacagahbdammaepndegcomiikm"
 
@@ -12,9 +10,7 @@ export default function requestSendData(
       {
         access_token: access_token,
         type: "SEND_DATA",
-        password: password,
-        salt: salt,
-        initializationVector: initializationVector
+        password: password
       },
       (res: { success: boolean }) => {
         if (res.success) {

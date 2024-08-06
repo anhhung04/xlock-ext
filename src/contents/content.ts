@@ -2,6 +2,10 @@ import type { PlasmoCSConfig } from "plasmo"
 
 import { sendToBackground } from "@plasmohq/messaging"
 
+import type { ItemModel, ShareItemModel } from "~components/types/Item"
+import { decryptMessage } from "~services/crypto/decrypt.message"
+import { getSessionPassword } from "~services/password/get.session.password"
+
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
   exclude_matches: ["http://localhost:*/*"]
@@ -153,19 +157,21 @@ function attachPopupToXLockButton(
   }
 
   function checkSession() {
-    chrome.runtime.sendMessage(
-      { action: "getSessionToken", key: "userToken" },
-      function (result) {
-        removeExistingPopup()
-        if (result.value) {
-          const autofillPopup = createAutofillPopup(inputField)
-          updatePopup(autofillPopup, xLockButton)
-        } else {
-          const loginPopup = createLoginPopup(inputField)
-          updatePopup(loginPopup, xLockButton)
-        }
+    sendToBackground({
+      name: "ping",
+      body: {
+        action: "getToken"
       }
-    )
+    }).then((response) => {
+      removeExistingPopup()
+      if (response.success && response.user_token) {
+        const autofillPopup = createAutofillPopup(inputField)
+        updatePopup(autofillPopup, xLockButton)
+      } else {
+        const loginPopup = createLoginPopup(inputField)
+        updatePopup(loginPopup, xLockButton)
+      }
+    })
   }
 
   checkSession()
@@ -267,7 +273,7 @@ function createLoginPopup(inputField: HTMLInputElement): HTMLElement {
   loginButton.textContent = "Log in"
 
   loginButton.addEventListener("click", () => {
-    window.open("http://localhost:3000", "_blank")
+    window.open("http://localhost:3000/login", "_blank")
   })
 
   container.appendChild(loginButton)
@@ -311,7 +317,7 @@ function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
 
   autofillPopup.appendChild(accountBody)
 
-  function fetchAccountCards(accountBody: HTMLElement) {
+  async function fetchAccountCards(accountBody: HTMLElement) {
     accountBody.innerHTML = ""
     sendToBackground({
       name: "ping",
@@ -319,77 +325,93 @@ function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
         action: "fetchAccountCards"
       }
     }).then((response) => {
-      const accountCards = response
+      const accountCards = response.data
 
       if (accountCards.length > 0) {
-        const accounts = accountCards.map((card) => ({
-          credentialID: card.credentialID,
-          credentials: card.credentials
-        }))
-
-        accounts.forEach((account) => {
-          const accountOption = document.createElement("div")
-          accountOption.className = "account-option"
-          Object.assign(accountOption.style, {
-            display: "flex",
-            gap: "10px",
-            border: "1px solid #000",
-            borderRadius: "14px",
-            height: "50px",
-            alignItems: "center",
-            paddingLeft: "10px",
-            paddingRight: "10px"
+        const accounts = accountCards.map(
+          (card: ItemModel | ShareItemModel) => ({
+            description: card.description,
+            credentials: card.enc_credentials
           })
+        )
 
-          const accountOptionImage = document.createElement(
-            "img"
-          ) as HTMLImageElement
-          accountOptionImage.className = "account-image"
-          accountOptionImage.width = 40
-          accountOptionImage.height = 40
+        accounts.forEach(
+          async (account: { description: string; credentials: string }) => {
+            const [initializationVector, salt, cipherText] =
+              account.credentials.split("::")
 
-          sendToBackground({
-            name: "ping",
-            body: {
-              action: "getTabIcon"
-            }
-          }).then((response) => {
-            accountOptionImage.src = response.iconUrl
-          })
+            const password = await getSessionPassword()
 
-          const accountOptionInfor = document.createElement("div")
-          accountOptionInfor.className = "account-info"
-          accountOptionInfor.style.display = "flex"
-          accountOptionInfor.style.flexDirection = "column"
+            console.log("START DECRYPT")
+            // const dec_credentials = await decryptMessage(
+            //   { salt, initializationVector, cipherText },
+            //   password
+            // )
+            const dec_credentials = '{"username: Quan, password: 111111"}'
+            console.log("END DECRYPT")
 
-          const accountOptionID = document.createElement("div")
-          accountOptionID.className = "account-option-ID"
-          accountOptionID.textContent = account.credentialID
-          accountOptionID.style.fontFamily = "Inter"
-          accountOptionID.style.fontSize = "14px"
-          accountOptionID.style.fontWeight = "400"
+            const cardInfo = JSON.parse(dec_credentials)
 
-          const accountOptionUsername = document.createElement("div")
-          accountOptionUsername.className = "account-option-username"
-          accountOptionUsername.textContent = account.credentials.username
-          accountOptionUsername.style.fontFamily = "Inter"
-          accountOptionUsername.style.fontSize = "14px"
-          accountOptionUsername.style.fontWeight = "400"
+            const accountOption = document.createElement("div")
+            accountOption.className = "account-option"
+            Object.assign(accountOption.style, {
+              display: "flex",
+              gap: "10px",
+              border: "1px solid #000",
+              borderRadius: "14px",
+              height: "50px",
+              alignItems: "center",
+              paddingLeft: "10px",
+              paddingRight: "10px"
+            })
 
-          accountOption.addEventListener("click", () => {
-            autofillCredentials(
-              account.credentials.username,
-              account.credentials.password
-            )
-            autofillPopup.style.display = "none"
-          })
+            const accountOptionImage = document.createElement(
+              "img"
+            ) as HTMLImageElement
+            accountOptionImage.className = "account-image"
+            accountOptionImage.width = 40
+            accountOptionImage.height = 40
 
-          accountOptionInfor.appendChild(accountOptionID)
-          accountOptionInfor.appendChild(accountOptionUsername)
-          accountOption.appendChild(accountOptionImage)
-          accountOption.appendChild(accountOptionInfor)
-          accountBody.appendChild(accountOption)
-        })
+            sendToBackground({
+              name: "ping",
+              body: {
+                action: "getTabIcon"
+              }
+            }).then((response) => {
+              accountOptionImage.src = response.iconUrl
+            })
+
+            const accountOptionInfor = document.createElement("div")
+            accountOptionInfor.className = "account-info"
+            accountOptionInfor.style.display = "flex"
+            accountOptionInfor.style.flexDirection = "column"
+
+            const accountOptionID = document.createElement("div")
+            accountOptionID.className = "account-option-ID"
+            accountOptionID.textContent = account.description
+            accountOptionID.style.fontFamily = "Inter"
+            accountOptionID.style.fontSize = "14px"
+            accountOptionID.style.fontWeight = "400"
+
+            const accountOptionUsername = document.createElement("div")
+            accountOptionUsername.className = "account-option-username"
+            accountOptionUsername.textContent = cardInfo.username
+            accountOptionUsername.style.fontFamily = "Inter"
+            accountOptionUsername.style.fontSize = "14px"
+            accountOptionUsername.style.fontWeight = "400"
+
+            accountOption.addEventListener("click", () => {
+              autofillCredentials(cardInfo.username, cardInfo.password)
+              autofillPopup.style.display = "none"
+            })
+
+            accountOptionInfor.appendChild(accountOptionID)
+            accountOptionInfor.appendChild(accountOptionUsername)
+            accountOption.appendChild(accountOptionImage)
+            accountOption.appendChild(accountOptionInfor)
+            accountBody.appendChild(accountOption)
+          }
+        )
       } else if (accountCards.length === 0) {
         const title = document.createElement("p")
         title.className = "account-body-title"

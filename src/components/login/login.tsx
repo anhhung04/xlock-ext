@@ -2,17 +2,9 @@ import React, { useState } from "react"
 
 interface LoginProps {
   onLogin: (password: string) => void
-  incorrectAttempts: number
-  showResetButton: boolean
-  onResetPassword: () => void
 }
 
-export default function Login({
-  onLogin,
-  incorrectAttempts,
-  showResetButton,
-  onResetPassword
-}: LoginProps) {
+export default function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState<string>("")
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -70,22 +62,6 @@ export default function Login({
             Next
           </span>
         </button>
-        {incorrectAttempts > 0 && (
-          <p className="warning-text plasmo-text-red-600 plasmo-text-center plasmo-w-full">
-            {incorrectAttempts >= 5
-              ? "You have entered the wrong password more than 5 times. Do you want to reset the passcode? Note that all credentials will be deleted upon reset."
-              : "Incorrect password."}
-          </p>
-        )}
-        {showResetButton && (
-          <button
-            type="button"
-            onClick={onResetPassword}
-            className="plasmo-w-72 plasmo-h-10 plasmo-border plasmo-rounded-md plasmo-text-base plasmo-text-white plasmo-font-semibold plasmo-mt-12"
-            style={{ backgroundColor: "#0570EB", fontFamily: "Inter" }}>
-            Reset Password
-          </button>
-        )}
       </form>
     </div>
   )

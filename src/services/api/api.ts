@@ -2,11 +2,12 @@ export async function apiCall(
   path = "/api",
   method = "GET",
   body = null,
-  token: string
+  token?: string
 ) {
   try {
-    const headers = {
-      Authorization: `Bearer ${token}`
+    const headers = {}
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
     }
 
     if (body) {

@@ -1,18 +1,18 @@
 import { sendToBackground } from "@plasmohq/messaging"
 
-export async function getEncryptedToken(): Promise<string> {
+export async function getTokenVector(): Promise<string> {
   return new Promise((resolve, reject) => {
     sendToBackground({
       name: "ping",
       body: {
-        action: "getEncryptedToken"
+        action: "getTokenVector"
       }
     })
       .then((response) => {
         if (response.success) {
-          resolve(response.user_token)
+          resolve(response.vector_token)
         } else {
-          reject(new Error("Failed to retreive encrypted token"))
+          reject(new Error("Failed to retreive token vector"))
         }
       })
       .catch((error) => {

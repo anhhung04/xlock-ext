@@ -8,18 +8,14 @@ interface ButtonProps {
 export default function Button({ label, onCheck }: ButtonProps) {
   const [isChecked, setIsChecked] = useState(false)
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    event.stopPropagation()
+  const handleChange = () => {
     const newChecked = !isChecked
     setIsChecked(newChecked)
     onCheck(newChecked)
   }
 
   return (
-    <div
-      className="container"
-      style={{ textAlign: "center" }}
-      onClick={(e) => e.stopPropagation()}>
+    <div className="container" style={{ textAlign: "center" }}>
       <div
         className="toggle-switch"
         style={{

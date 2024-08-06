@@ -7,8 +7,8 @@ export async function getSessionToken(): Promise<string> {
       body: { action: "getToken" }
     })
       .then((response) => {
-        if (response.success && response.userToken) {
-          resolve(response.userToken)
+        if (response.success && response.user_token) {
+          resolve(response.user_token)
         } else {
           console.error("Failed to retrieve token")
           reject(new Error("Failed to retrieve token"))
