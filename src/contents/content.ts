@@ -11,16 +11,6 @@ export const config: PlasmoCSConfig = {
   exclude_matches: ["http://localhost:*/*"]
 }
 
-interface Credentials {
-  username: string
-  password: string
-}
-
-interface AccountCardInfo {
-  credentialID: string
-  credentials: Credentials
-}
-
 function autofillCredentials(username: string, password: string) {
   const usernameField = document.querySelector(
     'input[type="text"], input[type="email"]'
@@ -43,7 +33,7 @@ function isLoginPage() {
   const url = window.location.href.toLowerCase()
 
   return (
-    loginKeywords.some((keyword) => url.includes(keyword)) ||
+    loginKeywords.some((keyword) => url.includes(keyword)) &&
     !signupKeywords.some((keyword) => url.includes(keyword))
   )
 }
@@ -342,13 +332,10 @@ function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
 
             const password = await getSessionPassword()
 
-            console.log("START DECRYPT")
-            // const dec_credentials = await decryptMessage(
-            //   { salt, initializationVector, cipherText },
-            //   password
-            // )
-            const dec_credentials = '{"username: Quan, password: 111111"}'
-            console.log("END DECRYPT")
+            const dec_credentials = await decryptMessage(
+              { salt, initializationVector, cipherText },
+              password
+            )
 
             const cardInfo = JSON.parse(dec_credentials)
 
@@ -448,9 +435,19 @@ function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
           sendToBackground({
             name: "ping",
             body: {
-              action: "openPopup"
+              action: "getTabInfo"
             }
-          }).then(() => console.log("SEND MESSAGE POPUP SUCCESS"))
+          }).then((response) => {
+            sendToBackground({
+              name: "ping",
+              body: {
+                action: "openPopup",
+                tabTitle: response.tabTitle,
+                tabURL: response.tabURL,
+                tabIcon: response.tabIcon
+              }
+            }).then(() => console.log("SEND MESSAGE POPUP SUCCESS"))
+          })
         })
 
         accountBody.appendChild(addButton)

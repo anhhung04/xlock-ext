@@ -1,18 +1,18 @@
 import { sendToBackground } from "@plasmohq/messaging"
 
-export async function getEncryptedToken(): Promise<string> {
+export async function getEncryptedPrivateKey(): Promise<string> {
   return new Promise((resolve, reject) => {
     sendToBackground({
       name: "ping",
       body: {
-        action: "getEncryptedToken"
+        action: "getEncryptedPrivateKey"
       }
     })
       .then((response) => {
         if (response.success) {
-          resolve(response.enc_token)
+          resolve(response.enc_pri)
         } else {
-          reject(new Error("Failed to retreive encrypted token"))
+          reject(new Error("Failed to retreive encrypted private key"))
         }
       })
       .catch((error) => {

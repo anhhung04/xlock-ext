@@ -70,7 +70,8 @@
           "assets/icon.png",
           "assets/checked.svg",
           "assets/copy.svg",
-          "assets/Edit.svg"
+          "assets/Edit.svg",
+          "tabs/*"
         ],
         "matches": [
           "<all_urls>"

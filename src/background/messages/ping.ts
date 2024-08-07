@@ -1,5 +1,9 @@
+import { sendToContentScript } from "@plasmohq/messaging"
+
 import type { ItemModel, ShareItemModel } from "~components/types/Item"
 import { apiCall } from "~services/api/api"
+import concatenateData from "~services/crypto/concat.data"
+import { encryptMessage } from "~services/crypto/encrypt.message"
 
 export default {}
 
@@ -42,15 +46,15 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
     return true
   } else if (request.body.action === "getEncryptedToken") {
-    chrome.storage.local.get("user_token", (result) => {
+    chrome.storage.local.get("enc_token", (result) => {
       if (chrome.runtime.lastError) {
         console.error(
           "Error getting encrypted token:",
           chrome.runtime.lastError
         )
-        sendResponse({ success: false, user_token: "" })
+        sendResponse({ success: false, enc_token: "" })
       } else {
-        sendResponse({ success: true, user_token: result.user_token || "" })
+        sendResponse({ success: true, enc_token: result.enc_token || "" })
       }
       return true
     })
@@ -133,6 +137,22 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       }
     })
     return true
+  } else if (request.body.action === "getTabInfo") {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const currentTab = tabs[0]
+      if (currentTab && currentTab.url) {
+        const parsedURL = new URL(currentTab.url)
+        const port = parsedURL.port ? `:${parsedURL.port}` : ""
+        const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}`
+        sendResponse({
+          tabTitle: currentTab.title,
+          tabURL: mainURL,
+          tabIcon: currentTab.favIconUrl
+        })
+      } else {
+        sendResponse({ error: "Can't find tab" })
+      }
+    })
   } else if (request.body.action === "redirectURL") {
     chrome.tabs.create({
       url: request.body.url
@@ -154,7 +174,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         if (responseData["code"] === 401) {
           throw new Error(responseData["message"])
         }
-        console.log(responseData)
         const listAccountCards: (ItemModel | ShareItemModel)[] =
           responseData.data
         sendResponse({ success: true, data: listAccountCards })
@@ -163,8 +182,11 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     return true
   } else if (request.body.action === "openPopup") {
     chrome.tabs.create({
-      url: chrome.runtime.getURL("popup.html")
+      url: chrome.runtime.getURL(
+        `tabs/Add.html?tabTitle=${request.body.tabTitle}&tabURL=${request.body.tabURL}&tabIcon=${request.body.tabIcon}`
+      )
     })
+
     return true
   } else if (request.body.action === "checkPassword") {
     try {
@@ -291,5 +313,77 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       }
       return true
     })
+  } else if (request.body.action === "sendData") {
+    try {
+      if (request.body.data) {
+        const getSessionData = (key: string): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            chrome.storage.session.get(key, (result) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError)
+              } else {
+                resolve(result[key])
+              }
+            })
+          })
+        }
+
+        const password: string = await getSessionData("password")
+        const token: string = await getSessionData("user_token")
+
+        const raw_credentials = request.body.data.credentials
+        const { salt, initializationVector, cipherText } = await encryptMessage(
+          JSON.stringify(raw_credentials),
+          password
+        )
+        const enc_credentials = concatenateData(
+          cipherText,
+          initializationVector,
+          salt
+        )
+
+        const data = {
+          name: request.body.data.name,
+          site: request.body.data.site,
+          description: request.body.data.description,
+          enc_credentials: enc_credentials,
+          logo_url: request.body.data.logo_url
+        }
+
+        const responseData = await apiCall(
+          "/api/v1/items/create",
+          "POST",
+          data,
+          token
+        )
+
+        if (responseData["code"] === 201) {
+          sendToContentScript({
+            name: "content",
+            body: { type: "refreshFetch" }
+          })
+
+          sendResponse({ success: true })
+        } else {
+          sendResponse({ success: false })
+        }
+      } else {
+        sendResponse({ success: false })
+      }
+    } catch (error) {
+      console.error(error)
+      sendResponse({ success: false })
+    }
+    return true
+  } else if (request.body.action === "getEncryptedPrivateKey") {
+    chrome.storage.local.get("enc_pri", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting token:", chrome.runtime.lastError)
+        sendResponse({ success: false, error: chrome.runtime.lastError })
+      } else {
+        sendResponse({ success: true, enc_pri: result.enc_pri || "" })
+      }
+    })
+    return true
   }
 })

@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 
 import { decryptMessage } from "~services/crypto/decrypt.message"
+import { getEncryptedPrivateKey } from "~services/keyPair/get.ecncrypt.private.key"
 import { getSessionPassword } from "~services/password/get.session.password"
 
 import Button from "./Button"
@@ -9,12 +10,14 @@ interface PropsType {
   buttonKey: string
   description: string
   credentials: string
+  type: string
 }
 
 export default function AccountCard({
   buttonKey,
   description,
-  credentials
+  credentials,
+  type
 }: PropsType) {
   const [isChecked, setIsChecked] = useState<boolean>(true)
   const [username, setUsername] = useState<string>("********")
@@ -25,25 +28,54 @@ export default function AccountCard({
     setIsChecked((prev) => !prev)
     if (isChecked) {
       try {
-        const [initializationVector, salt, cipherText] = credentials.split("::")
-        if (!initializationVector || !salt || !cipherText) {
-          throw new Error("Invalid credentials format")
-        }
-
         const password = await getSessionPassword()
         if (!password) {
           throw new Error("Failed to retrieve session password")
         }
 
-        const dec_credentials = await decryptMessage(
-          { salt, initializationVector, cipherText },
-          password
-        )
+        if (type === "personal_item") {
+          const [initializationVector, salt, cipherText] =
+            credentials.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid credentials format")
+          }
 
-        const cardInfo = JSON.parse(dec_credentials)
+          const dec_credentials = await decryptMessage(
+            { salt, initializationVector, cipherText },
+            password
+          )
 
-        setUsername(cardInfo.username)
-        setPassword(cardInfo.password)
+          const cardInfo = JSON.parse(dec_credentials)
+
+          setUsername(cardInfo.username)
+          setPassword(cardInfo.password)
+        } else if (type === "shared_item") {
+          const enc_pri = await getEncryptedPrivateKey()
+          let [initializationVector, salt, cipherText] = enc_pri.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid encrypt private key format")
+          }
+
+          const dec_pri = await decryptMessage(
+            { salt, initializationVector, cipherText },
+            password
+          )
+          ;[initializationVector, salt, cipherText] = credentials.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid credentials format")
+          }
+
+          const dec_credentials = await decryptMessage(
+            { salt, initializationVector, cipherText },
+            dec_pri
+          )
+
+          const cardInfo = JSON.parse(dec_credentials)
+          setUsername(cardInfo.username)
+          setPassword(cardInfo.password)
+        } else {
+          throw new Error("Invalid credentials type")
+        }
       } catch (error) {
         console.error("Decryption failed: ", error)
         setUsername("********")

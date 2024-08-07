@@ -5,6 +5,7 @@ import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
 import { apiCall } from "~services/api/api"
 import concatenateData from "~services/crypto/concat.data"
 import { encryptMessage } from "~services/crypto/encrypt.message"
+import { getSessionPassword } from "~services/password/get.session.password"
 import { getSessionToken } from "~services/token/get.session.token"
 
 import Modal from "./Modal"
@@ -30,7 +31,7 @@ const getURL = (): Promise<{
 }
 
 export default function Add() {
-  const [credentialId, setCredentialId] = useState<string>("")
+  const [description, setDescription] = useState<string>("")
   const [username, setUsername] = useState<string>("")
   const [password, setPassword] = useState<string>("")
   const [showModal, setShowModal] = useState<boolean>(false)
@@ -44,9 +45,12 @@ export default function Add() {
       username: username,
       password: password
     })
+
+    const masterPassword = await getSessionPassword()
+
     const { salt, initializationVector, cipherText } = await encryptMessage(
       credentials,
-      password
+      masterPassword
     )
 
     const enc_credentials = concatenateData(
@@ -58,7 +62,7 @@ export default function Add() {
     const data = {
       name: title,
       site: mainURL,
-      description: credentialId,
+      description: description,
       enc_credentials: enc_credentials,
       logo_url: ""
     }
@@ -71,12 +75,12 @@ export default function Add() {
       data,
       token
     )
-    console.log(responseData)
+
     if (responseData["code"] === 201) {
       sendToContentScript({ name: "content", body: { type: "refreshFetch" } })
 
       setShowModal(true)
-      setCredentialId("")
+      setDescription("")
       setUsername("")
       setPassword("")
     } else {
@@ -125,9 +129,9 @@ export default function Add() {
                   paddingLeft: "10px",
                   fontFamily: "Inter"
                 }}
-                placeholder="Enter credential id"
-                value={credentialId}
-                onChange={(e) => setCredentialId(e.target.value)}
+                placeholder="Enter description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div className="plasmo-flex plasmo-flex-col">

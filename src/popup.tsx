@@ -21,7 +21,8 @@ import { saveSessionToken } from "~services/token/save.session.token"
 function IndexPopup() {
   const [isLogin, setIsLogin] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
-  const [showModal, setShowModal] = useState(false)
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string>("")
 
   useEffect(() => {
     const fetchLocalToken = async () => {
@@ -54,31 +55,37 @@ function IndexPopup() {
           setIsLogin(true)
         }
       } catch (error) {
-        console.log(error)
+        console.error(error)
       }
     }
 
     fetchSession()
   }, [])
 
-  const handleCloseModal = () => {
-    setShowModal(false)
+  const handleLoginRedirect = async () => {
+    await sendToBackground({
+      name: "ping",
+      body: {
+        action: "redirectURL",
+        url: process.env.PLASMO_PUBLIC_FRONTEND_URL + "/login"
+      }
+    })
   }
 
-  const handleLoginRedirect = () => {
-    window.location.href = "http://localhost:3000/login"
+  const handleModalConfirm = () => {
+    handleLoginRedirect()
+    setShowModal(false)
   }
 
   const handleLogin = async (password: string) => {
     try {
       const encryptedToken = await getEncryptedToken()
-      const saltToken = await getSaltToken()
-      const tokenVector = await getTokenVector()
-
+      const [initializationVector, salt, cipherText] =
+        encryptedToken.split("::")
       const vault = {
-        salt: saltToken,
-        initializationVector: tokenVector,
-        cipherText: encryptedToken
+        salt,
+        initializationVector,
+        cipherText
       }
 
       const decryptedToken = await decryptMessage(vault, password)
@@ -97,7 +104,7 @@ function IndexPopup() {
         setShowModal(true)
       }
     } catch (error) {
-      console.error(error)
+      setErrorMessage("Incorrect password. Please try again")
     }
   }
 
@@ -105,7 +112,12 @@ function IndexPopup() {
     return <Main loginSuccess={loginSuccess} />
   }
 
-  return <Login onLogin={handleLogin} />
+  return (
+    <>
+      <Login onLogin={handleLogin} errorMessage={errorMessage} />
+      <Modal isOpen={showModal} onConfirm={handleModalConfirm} />
+    </>
+  )
 }
 
 export default IndexPopup

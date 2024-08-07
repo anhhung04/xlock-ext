@@ -1,6 +1,9 @@
+import concatenateData from "~services/crypto/concat.data"
+import { decryptMessage } from "~services/crypto/decrypt.message"
 import { encryptMessage } from "~services/crypto/encrypt.message"
 import generateDeviceId from "~services/deviceID/generate.device.id"
 import generateKeyPair from "~services/keyPair/generate.key.pair"
+import { getSessionPassword } from "~services/password/get.session.password"
 import { deriveKey } from "~services/password/password.hash"
 
 export {}
@@ -9,28 +12,27 @@ console.log("background.js is working")
 
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_DATA") {
-    if (req.access_token) {
+    if (req.access_token && req.enc_pri) {
       const { salt, initializationVector, cipherText } = await encryptMessage(
         req.access_token,
         req.password
       )
-      chrome.storage.local.set({ user_token: cipherText }, () => {
+
+      const enc_token = concatenateData(cipherText, initializationVector, salt)
+
+      chrome.storage.local.set({ enc_token: enc_token }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting token:", chrome.runtime.lastError)
           res({ success: false })
         }
       })
 
-      chrome.storage.local.set({ salt_token: salt }, () => {
+      chrome.storage.local.set({ enc_pri: req.enc_pri }, () => {
         if (chrome.runtime.lastError) {
-          console.error("Error setting salt:", chrome.runtime.lastError)
-          res({ success: false })
-        }
-      })
-
-      chrome.storage.local.set({ vector_token: initializationVector }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("Error setting vector token:", chrome.runtime.lastError)
+          console.error(
+            "Error setting encrypted private key:",
+            chrome.runtime.lastError
+          )
           res({ success: false })
         }
       })
@@ -99,6 +101,43 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
       console.error("Error encrypt key:", error)
       res({ success: false, encryptedPrivateKey: "" })
     }
+  } else if (req.type === "REQUEST_TAB_INFO") {
+    try {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs[0]
+        res({
+          success: true,
+          title: activeTab.title,
+          favicon: activeTab.favIconUrl
+        })
+      })
+    } catch (error) {
+      res({
+        success: false
+      })
+    }
+    return true
+  } else if (req.type === "REQUEST_DECRYPT") {
+    try {
+      const password = await getSessionPassword()
+      if (req.text) {
+        const [initializationVector, salt, cipherText] = req.text.split("::")
+        const plainText = await decryptMessage(
+          { salt, initializationVector, cipherText },
+          password
+        )
+        if (plainText) {
+          res({ success: true, plainText: plainText })
+        } else {
+          res({ success: false })
+        }
+      }
+    } catch (error) {
+      res({
+        success: false
+      })
+    }
+    return true
   } else {
     res({ success: false })
   }

@@ -1,4 +1,10 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
+
+import { sendToBackground } from "@plasmohq/messaging"
+
+import Modal from "~Modal"
+import { apiCall } from "~services/api/api"
+import { getSessionToken } from "~services/token/get.session.token"
 
 import Account from "./Account/Account"
 import Add from "./Add/Add"
@@ -7,6 +13,7 @@ import Home from "./Home/Home"
 
 export default function Main({ loginSuccess }) {
   const [page, setPage] = useState<string>("home")
+  const [isExpired, setIsExpired] = useState<boolean>(false)
 
   function handleSetPage(page: string): void {
     setPage(page)
@@ -14,6 +21,43 @@ export default function Main({ loginSuccess }) {
 
   function handleHomeSetAdd() {
     setPage("add")
+  }
+
+  useEffect(() => {
+    const checkTokenExpire = async () => {
+      try {
+        const token = await getSessionToken()
+        const responseData = await apiCall(
+          "/api/v1/auth/verify",
+          "POST",
+          {
+            access_token: token
+          },
+          token
+        )
+        if (responseData["code"] === 500) {
+          setIsExpired(true)
+        }
+      } catch (error) {
+        console.error("An error occured while verifying the token:", error)
+      }
+    }
+    checkTokenExpire()
+  }, [])
+
+  const handleLoginRedirect = async () => {
+    await sendToBackground({
+      name: "ping",
+      body: {
+        action: "redirectURL",
+        url: process.env.PLASMO_PUBLIC_FRONTEND_URL + "/login"
+      }
+    })
+  }
+
+  const handleModalConfirm = () => {
+    handleLoginRedirect()
+    setIsExpired(false)
   }
 
   return (
@@ -115,6 +159,7 @@ export default function Main({ loginSuccess }) {
           />
         </div>
       </div>
+      <Modal isOpen={isExpired} onConfirm={handleModalConfirm}></Modal>
     </div>
   )
 }

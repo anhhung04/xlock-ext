@@ -66,8 +66,6 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
       if (listAccountCards.length === 0) {
         setShowModal(true)
       }
-
-      console.log("Fetched account cards successfully", responseData)
     } catch (error) {
       console.error("Error fetching account cards:", error)
     }
@@ -171,6 +169,7 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
             buttonKey={index.toString()}
             description={accountCard.description}
             credentials={accountCard.enc_credentials}
+            type={accountCard.type}
           />
         ))}
         {showModal && (

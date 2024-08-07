@@ -2,9 +2,10 @@ import React, { useState } from "react"
 
 interface LoginProps {
   onLogin: (password: string) => void
+  errorMessage: string
 }
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, errorMessage }: LoginProps) {
   const [password, setPassword] = useState<string>("")
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,6 +52,9 @@ export default function Login({ onLogin }: LoginProps) {
           className="plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-pl-3 plasmo-w-72 plasmo-h-10 plasmo-mb-2"
           onChange={(e) => setPassword(e.target.value)}
         />
+        {errorMessage && (
+          <p className="plasmo-text-red-600 plasmo-mt-1">{errorMessage}</p>
+        )}
 
         <button
           type="submit"

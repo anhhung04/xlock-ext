@@ -30,11 +30,15 @@ export async function apiCall(
       return { code: 403, message: "Forbidden" }
     }
 
+    if (res.status === 422) {
+      return { code: 422, message: "Validation Error" }
+    }
+
     return await res.json()
   } catch (error) {
     return {
       code: 500,
-      message: "Server error"
+      message: "Internal Server Error"
     }
   }
 }
