@@ -1,17 +1,19 @@
 import { sendToBackground } from "@plasmohq/messaging"
 
-export async function getSessionToken(): Promise<string> {
+export async function getSessionPassword(): Promise<string> {
   return new Promise((resolve, reject) => {
     sendToBackground({
       name: "ping",
-      body: { action: "getToken" }
+      body: {
+        action: "getPassword"
+      }
     })
       .then((response) => {
-        if (response.success && response.user_token) {
-          resolve(response.user_token)
+        if (response.success) {
+          resolve(response.password)
         } else {
-          console.error("Failed to retrieve token")
-          reject(new Error("Failed to retrieve token"))
+          console.error("Failed to get password")
+          reject(new Error("Failed to get password"))
         }
       })
       .catch((error) => {

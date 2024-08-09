@@ -1,18 +1,18 @@
 import { sendToBackground } from "@plasmohq/messaging"
 
-export async function getInitializationVector(): Promise<string> {
+export async function getSaltToken(): Promise<string> {
   return new Promise((resolve, reject) => {
     sendToBackground({
       name: "ping",
       body: {
-        action: "getVector"
+        action: "getSaltToken"
       }
     })
       .then((response) => {
         if (response.success) {
-          resolve(response.vector)
+          resolve(response.salt_token)
         } else {
-          reject(new Error("Failed to retreive vector"))
+          reject(new Error("Failed to retreive salt token"))
         }
       })
       .catch((error) => {

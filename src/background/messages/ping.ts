@@ -1,15 +1,31 @@
-interface Credentials {
-  username: string
-  password: string
+import { sendToContentScript } from "@plasmohq/messaging"
+
+import type { ItemModel, ShareItemModel } from "~components/types/Item"
+import { apiCall } from "~services/api/api"
+import concatenateData from "~services/crypto/concat.data"
+import { encryptMessage } from "~services/crypto/encrypt.message"
+
+export default {}
+
+const getURL = () => {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const currentTab = tabs[0]
+      if (currentTab && currentTab.url) {
+        const parsedURL = new URL(currentTab.url)
+        const port = parsedURL.port ? `:${parsedURL.port}` : ""
+        const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}`
+        resolve(mainURL)
+      } else {
+        reject("No active tab found or tab URL is missing")
+      }
+    })
+  })
 }
 
-interface AccountCardInfo {
-  credentialID: string
-  credentials: Credentials
-}
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.body.action === "setToken") {
-    chrome.storage.session.set({ userToken: request.body.userToken }, () => {
+    chrome.storage.session.set({ user_token: request.body.userToken }, () => {
       if (chrome.runtime.lastError) {
         console.error("Error setting token:", chrome.runtime.lastError)
         sendResponse({ success: false, error: chrome.runtime.lastError })
@@ -20,59 +36,84 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
     return true
   } else if (request.body.action === "getToken") {
-    chrome.storage.session.get("userToken", (result) => {
+    chrome.storage.session.get("user_token", (result) => {
       if (chrome.runtime.lastError) {
         console.error("Error getting token:", chrome.runtime.lastError)
         sendResponse({ success: false, error: chrome.runtime.lastError })
       } else {
-        sendResponse({ success: true, userToken: result.userToken })
+        sendResponse({ success: true, user_token: result.user_token || "" })
       }
     })
     return true
   } else if (request.body.action === "getEncryptedToken") {
-    chrome.storage.local.get("userToken", (result) => {
+    chrome.storage.local.get("enc_token", (result) => {
       if (chrome.runtime.lastError) {
         console.error(
           "Error getting encrypted token:",
           chrome.runtime.lastError
         )
-        sendResponse({ success: false, userToken: "" })
+        sendResponse({ success: false, enc_token: "" })
       } else {
-        console.log("Encrypted token retrieved successfully", result.userToken)
-        sendResponse({ success: true, userToken: result.userToken || "" })
+        sendResponse({ success: true, enc_token: result.enc_token || "" })
       }
       return true
     })
-  } else if (request.body.action === "getSalt") {
-    chrome.storage.local.get("salt", (result) => {
+  } else if (request.body.action === "getSaltPrivateKey") {
+    chrome.storage.local.get("salt_private_key", (result) => {
       if (chrome.runtime.lastError) {
-        console.error("Error getting salt:", chrome.runtime.lastError)
-        sendResponse({ success: false, salt: "" })
+        console.error(
+          "Error getting salt private key:",
+          chrome.runtime.lastError
+        )
+        sendResponse({ success: false, salt_private_key: "" })
       } else {
-        console.log("Salt retrieved successfully", result.salt)
-        sendResponse({ success: true, salt: result.salt || "" })
+        console.log(
+          "Salt private key retrieved successfully",
+          result.salt_private_key
+        )
+        sendResponse({
+          success: true,
+          salt_private_key: result.salt_private_key
+        })
       }
       return true
     })
-  } else if (request.body.action === "setVector") {
-    chrome.storage.local.set({ vector: request.body.vector }, () => {
+  } else if (request.body.action === "getSaltToken") {
+    chrome.storage.local.get("salt_token", (result) => {
       if (chrome.runtime.lastError) {
-        console.error("Error setting vector:", chrome.runtime.lastError)
-        sendResponse({ success: false })
+        console.error("Error getting salt token:", chrome.runtime.lastError)
+        sendResponse({ success: false, salt_token: "" })
       } else {
-        console.log("Vector saved successfully")
-        sendResponse({ success: true })
+        console.log("Salt token retrieved successfully", result.salt_token)
+        sendResponse({ success: true, salt_token: result.salt_token })
       }
       return true
     })
-  } else if (request.body.action === "getVector") {
-    chrome.storage.local.get("vector", (result) => {
+  } else if (request.body.action === "getPrivateKeyVector") {
+    chrome.storage.local.get("vector_private_key", (result) => {
       if (chrome.runtime.lastError) {
-        console.error("Error getting vector:", chrome.runtime.lastError)
+        console.error(
+          "Error getting private key vector:",
+          chrome.runtime.lastError
+        )
         sendResponse({ success: false, vector: "" })
       } else {
-        console.log("Vector retrieved successfully", result.vector)
-        sendResponse({ success: true, vector: result.vector })
+        console.log(
+          "Private key vector retrieved successfully",
+          result.vector_private_key
+        )
+        sendResponse({ success: true, vector: result.vector_private_key })
+      }
+      return true
+    })
+  } else if (request.body.action === "getTokenVector") {
+    chrome.storage.local.get("vector_token", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting token vector:", chrome.runtime.lastError)
+        sendResponse({ success: false, vector: "" })
+      } else {
+        console.log("Token vector retrieved successfully", result.vector_token)
+        sendResponse({ success: true, vector_token: result.vector_token })
       }
       return true
     })
@@ -96,25 +137,56 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       }
     })
     return true
+  } else if (request.body.action === "getTabInfo") {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const currentTab = tabs[0]
+      if (currentTab && currentTab.url) {
+        const parsedURL = new URL(currentTab.url)
+        const port = parsedURL.port ? `:${parsedURL.port}` : ""
+        const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}`
+        sendResponse({
+          tabTitle: currentTab.title,
+          tabURL: mainURL,
+          tabIcon: currentTab.favIconUrl
+        })
+      } else {
+        sendResponse({ error: "Can't find tab" })
+      }
+    })
   } else if (request.body.action === "redirectURL") {
     chrome.tabs.create({
       url: request.body.url
     })
     return true
   } else if (request.body.action === "fetchAccountCards") {
-    const responseData = await fetch("http://localhost:5000/account", {
-      method: "GET",
-      headers: {
-        "content-type": "application/json"
+    const mainURL = await getURL()
+    chrome.storage.session.get("user_token", async (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting token:", chrome.runtime.lastError)
+        sendResponse({ success: false, error: chrome.runtime.lastError })
+      } else {
+        const responseData = await apiCall(
+          `/api/v1/items/?site=${mainURL}`,
+          "GET",
+          null,
+          result.user_token
+        )
+        if (responseData["code"] === 401) {
+          throw new Error(responseData["message"])
+        }
+        const listAccountCards: (ItemModel | ShareItemModel)[] =
+          responseData.data
+        sendResponse({ success: true, data: listAccountCards })
       }
     })
-    const data: AccountCardInfo[] = await responseData.json()
-    sendResponse(data)
     return true
   } else if (request.body.action === "openPopup") {
     chrome.tabs.create({
-      url: chrome.runtime.getURL("popup.html")
+      url: chrome.runtime.getURL(
+        `tabs/Add.html?tabTitle=${request.body.tabTitle}&tabURL=${request.body.tabURL}&tabIcon=${request.body.tabIcon}`
+      )
     })
+
     return true
   } else if (request.body.action === "checkPassword") {
     try {
@@ -178,6 +250,140 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       console.log("ERROR:::", error)
     }
 
+    return true
+  } else if (request.body.action === "setPassword") {
+    chrome.storage.session.set({ password: request.body.password }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error setting password:", chrome.runtime.lastError)
+        sendResponse({ success: false })
+      } else {
+        console.log("Password saved successfully")
+        sendResponse({ success: true })
+      }
+      return true
+    })
+  } else if (request.body.action === "setItem") {
+    const saltKey = `salt_item_${request.body.id}`
+    const saltValue = request.body.salt
+    const vectorKey = `vector_item_${request.body.id}`
+    const vectorValue = request.body.vector
+    chrome.storage.local.set({ [saltKey]: saltValue }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error setting salt item:", chrome.runtime.lastError)
+        sendResponse({ success: false })
+        return true
+      }
+    })
+    chrome.storage.local.set({ [vectorKey]: vectorValue }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error setting vector item:", chrome.runtime.lastError)
+        sendResponse({ success: false })
+        return true
+      }
+    })
+    sendResponse({ success: true })
+    return true
+  } else if (request.body.action === "getItem") {
+    const saltKey = `salt_item_${request.body.id}`
+    const vectorKey = `vector_item_${request.body.id}`
+
+    chrome.storage.local.get([saltKey, vectorKey], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting salt or vector:", chrome.runtime.lastError)
+        sendResponse({ success: false, salt: "", vector: "" })
+        return true
+      }
+
+      const saltValue = result[saltKey] || ""
+      const vectorValue = result[vectorKey] || ""
+
+      console.log("Salt value:", saltValue)
+      console.log("Vector value:", vectorValue)
+
+      sendResponse({ success: true, salt: saltValue, vector: vectorValue })
+      return true
+    })
+  } else if (request.body.action === "getPassword") {
+    chrome.storage.session.get("password", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting password:", chrome.runtime.lastError)
+        sendResponse({ success: false, password: "" })
+      } else {
+        sendResponse({ success: true, password: result.password })
+      }
+      return true
+    })
+  } else if (request.body.action === "sendData") {
+    try {
+      if (request.body.data) {
+        const getSessionData = (key: string): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            chrome.storage.session.get(key, (result) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError)
+              } else {
+                resolve(result[key])
+              }
+            })
+          })
+        }
+
+        const password: string = await getSessionData("password")
+        const token: string = await getSessionData("user_token")
+
+        const raw_credentials = request.body.data.credentials
+        const { salt, initializationVector, cipherText } = await encryptMessage(
+          JSON.stringify(raw_credentials),
+          password
+        )
+        const enc_credentials = concatenateData(
+          cipherText,
+          initializationVector,
+          salt
+        )
+
+        const data = {
+          name: request.body.data.name,
+          site: request.body.data.site,
+          description: request.body.data.description,
+          enc_credentials: enc_credentials,
+          logo_url: request.body.data.logo_url
+        }
+
+        const responseData = await apiCall(
+          "/api/v1/items/create",
+          "POST",
+          data,
+          token
+        )
+
+        if (responseData["code"] === 201) {
+          sendToContentScript({
+            name: "content",
+            body: { type: "refreshFetch" }
+          })
+
+          sendResponse({ success: true })
+        } else {
+          sendResponse({ success: false })
+        }
+      } else {
+        sendResponse({ success: false })
+      }
+    } catch (error) {
+      console.error(error)
+      sendResponse({ success: false })
+    }
+    return true
+  } else if (request.body.action === "getEncryptedPrivateKey") {
+    chrome.storage.local.get("enc_pri", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting token:", chrome.runtime.lastError)
+        sendResponse({ success: false, error: chrome.runtime.lastError })
+      } else {
+        sendResponse({ success: true, enc_pri: result.enc_pri || "" })
+      }
+    })
     return true
   }
 })

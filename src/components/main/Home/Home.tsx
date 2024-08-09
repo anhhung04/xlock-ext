@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 
 import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
 
+import type { ItemModel, ShareItemModel } from "~components/types/Item"
 import { apiCall } from "~services/api/api"
 import { getSessionToken } from "~services/token/get.session.token"
 
@@ -13,16 +14,6 @@ interface TabInfo {
   favicon: string
 }
 
-interface Credentials {
-  username: string
-  password: string
-}
-
-interface AccountCardInfo {
-  credentialID: string
-  credentials: Credentials
-}
-
 interface HomeProps {
   loginSuccess: boolean
   onAddAccount: () => void
@@ -30,7 +21,9 @@ interface HomeProps {
 
 export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
   const [tabInfo, setTabInfo] = useState<TabInfo>({ title: "", favicon: "" })
-  const [accountCards, setAccountCards] = useState<AccountCardInfo[]>([])
+  const [accountCards, setAccountCards] = useState<
+    (ItemModel | ShareItemModel)[]
+  >([])
   const [showModal, setShowModal] = useState<boolean>(false)
   const icon = chrome.runtime.getURL(`assets/Edit.svg`)
 
@@ -41,7 +34,7 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
         if (currentTab && currentTab.url) {
           const parsedURL = new URL(currentTab.url)
           const port = parsedURL.port ? `:${parsedURL.port}` : ""
-          const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}/`
+          const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}`
           resolve(mainURL)
         } else {
           reject("No active tab found or tab URL is missing")
@@ -52,38 +45,27 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
 
   const fetchAccountCards = async () => {
     try {
-      const token = await getSessionToken()
       const mainURL = await getURL()
 
-      /*SOMEHOW I GOT STUCK AT THIS SHIT SO I WILL USE FULL URL*/
-      // const responseData = await apiCall(
-      //   "/api/user/account",
-      //   "GET",
-      //   {
-      //     url: mainURL
-      //   },
-      //   token
-      // )
-      const url = "http://localhost:8000/api/user/account"
-      const responseData = await fetch("http://localhost:5000/account", {
-        method: "GET",
-        headers: {
-          "content-type": "application/json"
-        }
-      })
+      const token = await getSessionToken()
+
+      const responseData = await apiCall(
+        `/api/v1/items/?site=${mainURL}`,
+        "GET",
+        null,
+        token
+      )
 
       if (responseData["code"] === 401) {
         throw new Error(responseData["message"])
       }
 
-      const listAccountCards: AccountCardInfo[] = await responseData.json()
+      const listAccountCards: (ItemModel | ShareItemModel)[] = responseData.data
       setAccountCards(listAccountCards)
 
       if (listAccountCards.length === 0) {
         setShowModal(true)
       }
-
-      console.log("Fetched account cards successfully", responseData)
     } catch (error) {
       console.error("Error fetching account cards:", error)
     }
@@ -128,7 +110,7 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
         name: "ping",
         body: {
           action: "redirectURL",
-          url: "http://localhost:3000"
+          url: process.env.PLASMO_PUBLIC_FRONTEND_URL
         }
       })
     } catch (error) {
@@ -185,8 +167,9 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
           <AccountCard
             key={index}
             buttonKey={index.toString()}
-            credentialID={accountCard.credentialID}
-            credentials={accountCard.credentials}
+            description={accountCard.description}
+            credentials={accountCard.enc_credentials}
+            type={accountCard.type}
           />
         ))}
         {showModal && (

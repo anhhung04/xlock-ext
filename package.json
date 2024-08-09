@@ -5,7 +5,7 @@
   "description": "A basic Plasmo extension.",
   "author": "quancters",
   "scripts": {
-    "dev": "plasmo dev --env=.env",
+    "dev": "plasmo dev --env=.env ",
     "build": "plasmo build",
     "package": "plasmo package"
   },
@@ -70,7 +70,8 @@
           "assets/icon.png",
           "assets/checked.svg",
           "assets/copy.svg",
-          "assets/Edit.svg"
+          "assets/Edit.svg",
+          "tabs/*"
         ],
         "matches": [
           "<all_urls>"

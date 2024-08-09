@@ -1,21 +1,28 @@
 import React, { useState } from "react"
 
-import { sendToContentScript } from "@plasmohq/messaging"
+import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
 
 import { apiCall } from "~services/api/api"
+import concatenateData from "~services/crypto/concat.data"
+import { encryptMessage } from "~services/crypto/encrypt.message"
+import { getSessionPassword } from "~services/password/get.session.password"
 import { getSessionToken } from "~services/token/get.session.token"
 
 import Modal from "./Modal"
 
-const getURL = () => {
+const getURL = (): Promise<{
+  title: string
+  mainURL: string
+}> => {
   return new Promise((resolve, reject) => {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       const currentTab = tabs[0]
       if (currentTab && currentTab.url) {
         const parsedURL = new URL(currentTab.url)
         const port = parsedURL.port ? `:${parsedURL.port}` : ""
-        const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}/`
-        resolve(mainURL)
+        const mainURL = `${parsedURL.protocol}//${parsedURL.hostname}${port}`
+        const title = currentTab.title
+        resolve({ title, mainURL })
       } else {
         reject("No active tab found or tab URL is missing")
       }
@@ -24,57 +31,61 @@ const getURL = () => {
 }
 
 export default function Add() {
-  const [credentialId, setCredentialId] = useState<string>("")
+  const [description, setDescription] = useState<string>("")
   const [username, setUsername] = useState<string>("")
   const [password, setPassword] = useState<string>("")
   const [showModal, setShowModal] = useState<boolean>(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const { title, mainURL } = await getURL()
+
+    const credentials = JSON.stringify({
+      username: username,
+      password: password
+    })
+
+    const masterPassword = await getSessionPassword()
+
+    const { salt, initializationVector, cipherText } = await encryptMessage(
+      credentials,
+      masterPassword
+    )
+
+    const enc_credentials = concatenateData(
+      cipherText,
+      initializationVector,
+      salt
+    )
+
     const data = {
-      name: credentialId,
-      url: await getURL(),
-      description: "New item information",
-      credentials: {
-        username: username,
-        password: password
-      }
+      name: title,
+      site: mainURL,
+      description: description,
+      enc_credentials: enc_credentials,
+      logo_url: ""
     }
 
     const token = await getSessionToken()
 
-    // const responseData = await apiCall("/api/account/add", "POST", data, token)
-    const responseData = await fetch("http://localhost:5000/account", {
-      method: "POST",
-      headers: {
-        "Content-type": "application/json"
-      },
-      body: JSON.stringify({
-        credentialID: credentialId,
-        credentials: {
-          username: username,
-          password: password
-        }
-      })
-    })
+    const responseData = await apiCall(
+      "/api/v1/items/create",
+      "POST",
+      data,
+      token
+    )
 
-    sendToContentScript({ name: "content", body: { type: "refreshFetch" } })
+    if (responseData["code"] === 201) {
+      sendToContentScript({ name: "content", body: { type: "refreshFetch" } })
 
-    console.log(responseData)
-    setShowModal(true)
-    setCredentialId("")
-    setUsername("")
-    setPassword("")
-
-    // if (responseData && responseData["code"] === 200) {
-    //   console.log("FETCH SUCCESS")
-    //   setShowModal(true)
-    //   setCredentialId("")
-    //   setUsername("")
-    //   setPassword("")
-    // } else {
-    //   console.log("FETCH FAILED")
-    // }
+      setShowModal(true)
+      setDescription("")
+      setUsername("")
+      setPassword("")
+    } else {
+      console.log("ADD ACCOUNT FAILED")
+    }
   }
   return (
     <div style={{ position: "relative", height: 470.4 }}>
@@ -106,7 +117,7 @@ export default function Add() {
                 htmlFor="credentialIdField"
                 className="plasmo-text-sm plasmo-font-medium plasmo-pl-3"
                 style={{ fontFamily: "Inter" }}>
-                Credential id
+                Description
               </label>
               <input
                 className="plasmo-flex plasmo-flex-col plasmo-justify-center plasmo-h-10 plasmo-gap-2"
@@ -118,9 +129,9 @@ export default function Add() {
                   paddingLeft: "10px",
                   fontFamily: "Inter"
                 }}
-                placeholder="Enter credential id"
-                value={credentialId}
-                onChange={(e) => setCredentialId(e.target.value)}
+                placeholder="Enter description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div className="plasmo-flex plasmo-flex-col">

@@ -6,14 +6,10 @@ interface Body {
 }
 
 export async function authenPassword(path: string, body: Body) {
-  const responseData = await apiCall(
-    path,
-    "POST",
-    {
-      Password: body.password
-    },
-    body.decryptedToken
-  )
+  const responseData = await apiCall(path, "POST", {
+    email: "user6@gmail.com",
+    password: body.password
+  })
 
   return responseData
 }

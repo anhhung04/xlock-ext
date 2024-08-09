@@ -2,36 +2,40 @@ import { useEffect, useState } from "react"
 
 import Login from "~components/login/login"
 import Main from "~components/main/Main"
-import { getSalt } from "~services/password/get.salt"
-import { authenPassword } from "~services/password/password.authen"
-import { deriveKey } from "~services/password/password.hash"
 import { authenToken } from "~services/token/auth.token"
 import { getEncryptedToken } from "~services/token/get.local.token"
 import { getSessionToken } from "~services/token/get.session.token"
 
 import "~style.css"
 
-import { sendToContentScript } from "@plasmohq/messaging"
+import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
 
-import Signup from "~components/signup/Signup"
+import Modal from "~Modal"
 import { decryptMessage } from "~services/crypto/decrypt.message"
-import { getInitializationVector } from "~services/initializationVector/get.vector"
-import { cryptoKeyToBase64 } from "~services/password/cryptoKey.to.base64"
+import { getTokenVector } from "~services/initializationVector/get.token.vector"
+import { getSessionPassword } from "~services/password/get.session.password"
+import { saveSessionPassword } from "~services/password/save.session.password"
+import { getSaltToken } from "~services/token/get.salt"
 import { saveSessionToken } from "~services/token/save.session.token"
 
 function IndexPopup() {
-  const [incorrectAttempts, setIncorrectAttempts] = useState(0)
   const [isLogin, setIsLogin] = useState(false)
-  const [showResetButton, setShowResetButton] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string>("")
 
   useEffect(() => {
     const fetchLocalToken = async () => {
       try {
         const tokenResponse = await getEncryptedToken()
-        if (tokenResponse) {
-        } else {
-          return <Signup />
+        if (tokenResponse === "") {
+          sendToBackground({
+            name: "ping",
+            body: {
+              action: "redirectURL",
+              url: process.env.PLASMO_PUBLIC_FRONTEND_URL
+            }
+          })
         }
       } catch (error) {
         console.log(error)
@@ -42,85 +46,66 @@ function IndexPopup() {
   }, [])
 
   useEffect(() => {
-    const fetchSessionToken = async () => {
+    const fetchSession = async () => {
       try {
         const tokenResponse = await getSessionToken()
-        if (tokenResponse) {
+        const passwordResponse = await getSessionPassword()
+        if (tokenResponse && passwordResponse) {
           setLoginSuccess(true)
           setIsLogin(true)
         }
       } catch (error) {
-        console.log(error)
+        console.error(error)
       }
     }
 
-    fetchSessionToken()
+    fetchSession()
   }, [])
 
-  function redirectToLogin(callbackURL: string) {
-    chrome.windows.create({
-      url:
-        process.env.FRONTEND_URL +
-        `/login?callbackURL=${encodeURIComponent(callbackURL)}`,
-      type: "popup",
-      width: 500,
-      height: 500
+  const handleLoginRedirect = async () => {
+    await sendToBackground({
+      name: "ping",
+      body: {
+        action: "redirectURL",
+        url: process.env.PLASMO_PUBLIC_FRONTEND_URL + "/login"
+      }
     })
+  }
+
+  const handleModalConfirm = () => {
+    handleLoginRedirect()
+    setShowModal(false)
   }
 
   const handleLogin = async (password: string) => {
     try {
       const encryptedToken = await getEncryptedToken()
-      const salt = await getSalt()
-      const initializationVector = await getInitializationVector()
-
-      const { key: passwordHash } = await deriveKey(password, salt)
+      const [initializationVector, salt, cipherText] =
+        encryptedToken.split("::")
       const vault = {
         salt,
         initializationVector,
-        cipherText: encryptedToken
+        cipherText
       }
+
       const decryptedToken = await decryptMessage(vault, password)
       const responseToken = await authenToken(decryptedToken)
 
-      if (responseToken["code"] === 401) {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const currentTab = tabs[0]
-          const callbackURL = currentTab.url
-          redirectToLogin(callbackURL)
-        })
-      }
-
-      const base64Password = await cryptoKeyToBase64(passwordHash)
-
-      const responseData = await authenPassword("/api/auth/login", {
-        password: base64Password,
-        decryptedToken: decryptedToken
-      })
-
-      const isSuccess = responseData && responseData["code"] === 200
-      if (isSuccess) {
+      if (responseToken["code"] === 200 && responseToken) {
         saveSessionToken(decryptedToken)
+        saveSessionPassword(password)
         sendToContentScript({
           name: "content",
           body: { type: "refresh" }
         })
-        setIncorrectAttempts(0)
         setIsLogin(true)
         setLoginSuccess(true)
-      } else {
-        setIncorrectAttempts((prev) => prev + 1)
-        if (incorrectAttempts + 1 >= 5) {
-          setShowResetButton(true)
-        }
+      } else if (responseToken["code"] === 422) {
+        setShowModal(true)
       }
     } catch (error) {
-      console.error(error)
+      setErrorMessage("Incorrect password. Please try again")
     }
-  }
-
-  const handleResetPassword = () => {
-    window.open(process.env.PLASMO_PUBLIC_FRONTEND_URL + "/login")
   }
 
   if (isLogin) {
@@ -128,12 +113,10 @@ function IndexPopup() {
   }
 
   return (
-    <Login
-      onLogin={handleLogin}
-      incorrectAttempts={incorrectAttempts}
-      showResetButton={showResetButton}
-      onResetPassword={handleResetPassword}
-    />
+    <>
+      <Login onLogin={handleLogin} errorMessage={errorMessage} />
+      <Modal isOpen={showModal} onConfirm={handleModalConfirm} />
+    </>
   )
 }
 

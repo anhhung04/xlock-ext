@@ -1,28 +1,90 @@
-import React, { useRef, useState } from "react"
+import React, { useState } from "react"
+
+import { decryptMessage } from "~services/crypto/decrypt.message"
+import { getEncryptedPrivateKey } from "~services/keyPair/get.ecncrypt.private.key"
+import { getSessionPassword } from "~services/password/get.session.password"
 
 import Button from "./Button"
 
-interface Credentials {
-  username: string
-  password: string
-}
-
-interface UserInfo {
+interface PropsType {
   buttonKey: string
-  credentialID: string
-  credentials: Credentials
+  description: string
+  credentials: string
+  type: string
 }
 
 export default function AccountCard({
   buttonKey,
-  credentialID,
-  credentials
-}: UserInfo) {
-  const [isChecked, setIsChecked] = useState<boolean>(false)
+  description,
+  credentials,
+  type
+}: PropsType) {
+  const [isChecked, setIsChecked] = useState<boolean>(true)
+  const [username, setUsername] = useState<string>("********")
+  const [password, setPassword] = useState<string>("********")
   const icon = chrome.runtime.getURL(`assets/copy.svg`)
 
-  function handleCheck() {
+  async function handleCheck() {
     setIsChecked((prev) => !prev)
+    if (isChecked) {
+      try {
+        const password = await getSessionPassword()
+        if (!password) {
+          throw new Error("Failed to retrieve session password")
+        }
+
+        if (type === "personal_item") {
+          const [initializationVector, salt, cipherText] =
+            credentials.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid credentials format")
+          }
+
+          const dec_credentials = await decryptMessage(
+            { salt, initializationVector, cipherText },
+            password
+          )
+
+          const cardInfo = JSON.parse(dec_credentials)
+
+          setUsername(cardInfo.username)
+          setPassword(cardInfo.password)
+        } else if (type === "shared_item") {
+          const enc_pri = await getEncryptedPrivateKey()
+          let [initializationVector, salt, cipherText] = enc_pri.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid encrypt private key format")
+          }
+
+          const dec_pri = await decryptMessage(
+            { salt, initializationVector, cipherText },
+            password
+          )
+          ;[initializationVector, salt, cipherText] = credentials.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid credentials format")
+          }
+
+          const dec_credentials = await decryptMessage(
+            { salt, initializationVector, cipherText },
+            dec_pri
+          )
+
+          const cardInfo = JSON.parse(dec_credentials)
+          setUsername(cardInfo.username)
+          setPassword(cardInfo.password)
+        } else {
+          throw new Error("Invalid credentials type")
+        }
+      } catch (error) {
+        console.error("Decryption failed: ", error)
+        setUsername("********")
+        setPassword("********")
+      }
+    } else {
+      setUsername("********")
+      setPassword("********")
+    }
   }
 
   function copyToClipboard(value: string) {
@@ -51,7 +113,7 @@ export default function AccountCard({
           <span
             className="plasmo-text-sm plasmo-font-normal"
             style={{ fontFamily: "Inter" }}>
-            {credentialID}
+            {description}
           </span>
         </div>
         <Button label={buttonKey} onCheck={handleCheck} />
@@ -73,11 +135,11 @@ export default function AccountCard({
           <p
             className="plasmo-pl-3 plasmo-test-sm font-normal plasmo-h-3.5"
             style={{ fontFamily: "Inter" }}>
-            {isChecked ? credentials.username : "********"}
+            {username}
           </p>
           <button
             className="hover:plasmo-scale-110 transition active:plasmo-scale-90"
-            onClick={() => copyToClipboard(credentials.username)}
+            onClick={() => copyToClipboard(username)}
             style={{
               backgroundImage: `url(${icon})`,
               backgroundRepeat: "no-repeat",
@@ -109,7 +171,7 @@ export default function AccountCard({
           </p>
           <button
             className="hover:plasmo-scale-110 transition active:plasmo-scale-90"
-            onClick={() => copyToClipboard(credentials.password)}
+            onClick={() => copyToClipboard(password)}
             style={{
               backgroundImage: `url(${icon})`,
               backgroundRepeat: "no-repeat",
