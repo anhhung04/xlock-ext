@@ -1,3 +1,5 @@
+"use strict"
+
 import { sendToContentScript } from "@plasmohq/messaging"
 
 import type { ItemModel, ShareItemModel } from "~components/types/Item"

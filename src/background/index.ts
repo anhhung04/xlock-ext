@@ -1,10 +1,9 @@
 "use strict"
 
-import generateDeviceId from "~services/deviceID/generate.device.id"
 import { KeyService } from "~services/key.service"
 import { PasswordService } from "~services/password.service"
-
 import { CryptoService } from "../services/crypto.service"
+import { DeviceService } from "~services/device.service"
 
 export {}
 
@@ -47,7 +46,7 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else if (req.type === "REQUEST_DEVICE_ID") {
     try {
-      const deviceID = generateDeviceId()
+      const deviceID = DeviceService.generateDeviceId()
       chrome.storage.local.set({ device_id: deviceID }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting deviceID:", chrome.runtime.lastError)
