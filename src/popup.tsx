@@ -2,21 +2,15 @@ import { useEffect, useState } from "react"
 
 import Login from "~components/login/login"
 import Main from "~components/main/Main"
-import { authenToken } from "~services/token/auth.token"
-import { getEncryptedToken } from "~services/token/get.local.token"
-import { getSessionToken } from "~services/token/get.session.token"
 
 import "~style.css"
 
 import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
 
 import Modal from "~Modal"
-import { decryptMessage } from "~services/crypto/decrypt.message"
-import { getTokenVector } from "~services/initializationVector/get.token.vector"
-import { getSessionPassword } from "~services/password/get.session.password"
-import { saveSessionPassword } from "~services/password/save.session.password"
-import { getSaltToken } from "~services/token/get.salt"
-import { saveSessionToken } from "~services/token/save.session.token"
+import { CryptoService } from "~services/crypto.service"
+import { PasswordService } from "~services/password.service"
+import { TokenService } from "~services/token.service"
 
 function IndexPopup() {
   const [isLogin, setIsLogin] = useState(false)
@@ -27,7 +21,7 @@ function IndexPopup() {
   useEffect(() => {
     const fetchLocalToken = async () => {
       try {
-        const tokenResponse = await getEncryptedToken()
+        const tokenResponse = await TokenService.getFromLocal()
         if (tokenResponse === "") {
           sendToBackground({
             name: "ping",
@@ -48,8 +42,8 @@ function IndexPopup() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const tokenResponse = await getSessionToken()
-        const passwordResponse = await getSessionPassword()
+        const tokenResponse = await TokenService.getFromSession()
+        const passwordResponse = await PasswordService.getFromSession()
         if (tokenResponse && passwordResponse) {
           setLoginSuccess(true)
           setIsLogin(true)
@@ -79,7 +73,7 @@ function IndexPopup() {
 
   const handleLogin = async (password: string) => {
     try {
-      const encryptedToken = await getEncryptedToken()
+      const encryptedToken = await TokenService.getFromLocal()
       const [initializationVector, salt, cipherText] =
         encryptedToken.split("::")
       const vault = {
@@ -88,12 +82,12 @@ function IndexPopup() {
         cipherText
       }
 
-      const decryptedToken = await decryptMessage(vault, password)
-      const responseToken = await authenToken(decryptedToken)
+      const decryptedToken = await CryptoService.decryptMessage(vault, password)
+      const responseToken = await TokenService.verifyToken(decryptedToken)
 
       if (responseToken["code"] === 200 && responseToken) {
-        saveSessionToken(decryptedToken)
-        saveSessionPassword(password)
+        TokenService.saveToSession(decryptedToken)
+        PasswordService.saveToSession(password)
         sendToContentScript({
           name: "content",
           body: { type: "refresh" }

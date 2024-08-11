@@ -1,9 +1,8 @@
 import { sendToContentScript } from "@plasmohq/messaging"
 
 import type { ItemModel, ShareItemModel } from "~components/types/Item"
-import { apiCall } from "~services/api/api"
-import concatenateData from "~services/crypto/concat.data"
-import { encryptMessage } from "~services/crypto/encrypt.message"
+import { CryptoService } from "~services/crypto.service"
+import { apiCall } from "~utils/api"
 
 export default {}
 
@@ -24,110 +23,60 @@ const getURL = () => {
 }
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-  if (request.body.action === "setToken") {
-    chrome.storage.session.set({ user_token: request.body.userToken }, () => {
+  if (request.body.action === "setSessionToken") {
+    chrome.storage.session.set({ user_token: request.body.user_token }, () => {
       if (chrome.runtime.lastError) {
-        console.error("Error setting token:", chrome.runtime.lastError)
         sendResponse({ success: false, error: chrome.runtime.lastError })
       } else {
-        console.log(`Set token success: ${request.body.userToken}`)
         sendResponse({ success: true })
       }
     })
     return true
-  } else if (request.body.action === "getToken") {
+  } else if (request.body.action === "getSessionToken") {
     chrome.storage.session.get("user_token", (result) => {
       if (chrome.runtime.lastError) {
-        console.error("Error getting token:", chrome.runtime.lastError)
         sendResponse({ success: false, error: chrome.runtime.lastError })
       } else {
         sendResponse({ success: true, user_token: result.user_token || "" })
       }
     })
     return true
-  } else if (request.body.action === "getEncryptedToken") {
+  } else if (request.body.action === "getLocalToken") {
     chrome.storage.local.get("enc_token", (result) => {
       if (chrome.runtime.lastError) {
-        console.error(
-          "Error getting encrypted token:",
-          chrome.runtime.lastError
-        )
         sendResponse({ success: false, enc_token: "" })
       } else {
         sendResponse({ success: true, enc_token: result.enc_token || "" })
       }
       return true
     })
-  } else if (request.body.action === "getSaltPrivateKey") {
-    chrome.storage.local.get("salt_private_key", (result) => {
+  } else if (request.body.action === "setLocalToken") {
+    chrome.storage.local.set({ user_token: request.body.user_token }, () => {
       if (chrome.runtime.lastError) {
-        console.error(
-          "Error getting salt private key:",
-          chrome.runtime.lastError
-        )
-        sendResponse({ success: false, salt_private_key: "" })
+        sendResponse({ success: false, error: chrome.runtime.lastError })
       } else {
-        console.log(
-          "Salt private key retrieved successfully",
-          result.salt_private_key
-        )
-        sendResponse({
-          success: true,
-          salt_private_key: result.salt_private_key
-        })
+        sendResponse({ success: true })
       }
-      return true
     })
-  } else if (request.body.action === "getSaltToken") {
-    chrome.storage.local.get("salt_token", (result) => {
+    return true
+  } else if (request.body.action === "getLocalDeviceID") {
+    chrome.storage.local.get("device_id", (result) => {
       if (chrome.runtime.lastError) {
-        console.error("Error getting salt token:", chrome.runtime.lastError)
-        sendResponse({ success: false, salt_token: "" })
-      } else {
-        console.log("Salt token retrieved successfully", result.salt_token)
-        sendResponse({ success: true, salt_token: result.salt_token })
-      }
-      return true
-    })
-  } else if (request.body.action === "getPrivateKeyVector") {
-    chrome.storage.local.get("vector_private_key", (result) => {
-      if (chrome.runtime.lastError) {
-        console.error(
-          "Error getting private key vector:",
-          chrome.runtime.lastError
-        )
-        sendResponse({ success: false, vector: "" })
-      } else {
-        console.log(
-          "Private key vector retrieved successfully",
-          result.vector_private_key
-        )
-        sendResponse({ success: true, vector: result.vector_private_key })
-      }
-      return true
-    })
-  } else if (request.body.action === "getTokenVector") {
-    chrome.storage.local.get("vector_token", (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error getting token vector:", chrome.runtime.lastError)
-        sendResponse({ success: false, vector: "" })
-      } else {
-        console.log("Token vector retrieved successfully", result.vector_token)
-        sendResponse({ success: true, vector_token: result.vector_token })
-      }
-      return true
-    })
-  } else if (request.body.action === "getDeviceID") {
-    chrome.storage.local.get("deviceID", (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error getting deviceID:", chrome.runtime.lastError)
         sendResponse({ success: false, deviceID: "" })
       } else {
-        console.log("DeviceID retrieved successfully", result.vector)
         sendResponse({ success: true, deviceID: result.deviceID })
       }
       return true
     })
+  } else if (request.body.action === "setLocalDeviceID") {
+    chrome.storage.local.set({ device_id: request.body.device_id }, () => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ success: false, error: chrome.runtime.lastError })
+      } else {
+        sendResponse({ success: true })
+      }
+    })
+    return true
   } else if (request.body.action === "getTabIcon") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0] && tabs[0].favIconUrl) {
@@ -332,11 +281,12 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         const token: string = await getSessionData("user_token")
 
         const raw_credentials = request.body.data.credentials
-        const { salt, initializationVector, cipherText } = await encryptMessage(
-          JSON.stringify(raw_credentials),
-          password
-        )
-        const enc_credentials = concatenateData(
+        const { salt, initializationVector, cipherText } =
+          await CryptoService.encryptMessage(
+            JSON.stringify(raw_credentials),
+            password
+          )
+        const enc_credentials = CryptoService.concatenateData(
           cipherText,
           initializationVector,
           salt

@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react"
 import { sendToBackground } from "@plasmohq/messaging"
 
 import Modal from "~Modal"
-import { apiCall } from "~services/api/api"
-import { getSessionToken } from "~services/token/get.session.token"
+import { TokenService } from "~services/token.service"
+import { apiCall } from "~utils/api"
 
 import Account from "./Account/Account"
 import Add from "./Add/Add"
@@ -26,7 +26,7 @@ export default function Main({ loginSuccess }) {
   useEffect(() => {
     const checkTokenExpire = async () => {
       try {
-        const token = await getSessionToken()
+        const token = await TokenService.getFromSession()
         const responseData = await apiCall(
           "/api/v1/auth/verify",
           "POST",
