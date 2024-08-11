@@ -1,9 +1,10 @@
 "use strict"
 
+import { DeviceService } from "~services/device.service"
 import { KeyService } from "~services/key.service"
 import { PasswordService } from "~services/password.service"
+
 import { CryptoService } from "../services/crypto.service"
-import { DeviceService } from "~services/device.service"
 
 export {}
 
@@ -86,7 +87,7 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
       console.error("Error generate key:", error)
       res({ success: false, privateKey: "", publicKey: "" })
     }
-  } else if (req.type === "REQUEST_ENCRYPT_PRIVATE_KEY") {
+  } else if (req.type === "REQUEST_ENCRYPT") {
     try {
       const { salt, initializationVector, cipherText } =
         await CryptoService.encryptMessage(req.privateKey, req.password)
