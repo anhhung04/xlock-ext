@@ -1,12 +1,11 @@
 import React, { useState } from "react"
 
-import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
+import { sendToContentScript } from "@plasmohq/messaging"
 
-import { apiCall } from "~services/api/api"
-import concatenateData from "~services/crypto/concat.data"
-import { encryptMessage } from "~services/crypto/encrypt.message"
-import { getSessionPassword } from "~services/password/get.session.password"
-import { getSessionToken } from "~services/token/get.session.token"
+import { CryptoService } from "~services/crypto.service"
+import { PasswordService } from "~services/password.service"
+import { TokenService } from "~services/token.service"
+import { apiCall } from "~utils/api"
 
 import Modal from "./Modal"
 
@@ -46,14 +45,12 @@ export default function Add() {
       password: password
     })
 
-    const masterPassword = await getSessionPassword()
+    const masterPassword = await PasswordService.getFromSession()
 
-    const { salt, initializationVector, cipherText } = await encryptMessage(
-      credentials,
-      masterPassword
-    )
+    const { salt, initializationVector, cipherText } =
+      await CryptoService.encryptMessage(credentials, masterPassword)
 
-    const enc_credentials = concatenateData(
+    const enc_credentials = CryptoService.concatenateData(
       cipherText,
       initializationVector,
       salt
@@ -67,7 +64,7 @@ export default function Add() {
       logo_url: ""
     }
 
-    const token = await getSessionToken()
+    const token = await TokenService.getFromSession()
 
     const responseData = await apiCall(
       "/api/v1/items/create",

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react"
 
-import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
+import { sendToBackground } from "@plasmohq/messaging"
 
 import type { ItemModel, ShareItemModel } from "~components/types/Item"
-import { apiCall } from "~services/api/api"
-import { getSessionToken } from "~services/token/get.session.token"
+import { TokenService } from "~services/token.service"
+import { apiCall } from "~utils/api"
 
 import AccountCard from "./AccountCard"
 import Modal from "./Modal"
@@ -47,7 +47,7 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
     try {
       const mainURL = await getURL()
 
-      const token = await getSessionToken()
+      const token = await TokenService.getFromSession()
 
       const responseData = await apiCall(
         `/api/v1/items/?site=${mainURL}`,

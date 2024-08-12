@@ -3,8 +3,8 @@ import type { PlasmoCSConfig } from "plasmo"
 import { sendToBackground } from "@plasmohq/messaging"
 
 import type { ItemModel, ShareItemModel } from "~components/types/Item"
-import { decryptMessage } from "~services/crypto/decrypt.message"
-import { getSessionPassword } from "~services/password/get.session.password"
+import { CryptoService } from "~services/crypto.service"
+import { PasswordService } from "~services/password.service"
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
@@ -330,9 +330,9 @@ function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
             const [initializationVector, salt, cipherText] =
               account.credentials.split("::")
 
-            const password = await getSessionPassword()
+            const password = await PasswordService.getFromSession()
 
-            const dec_credentials = await decryptMessage(
+            const dec_credentials = await CryptoService.decryptMessage(
               { salt, initializationVector, cipherText },
               password
             )

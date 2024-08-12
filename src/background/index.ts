@@ -1,10 +1,9 @@
-import concatenateData from "~services/crypto/concat.data"
-import { decryptMessage } from "~services/crypto/decrypt.message"
-import { encryptMessage } from "~services/crypto/encrypt.message"
-import generateDeviceId from "~services/deviceID/generate.device.id"
-import generateKeyPair from "~services/keyPair/generate.key.pair"
-import { getSessionPassword } from "~services/password/get.session.password"
-import { deriveKey } from "~services/password/password.hash"
+"use strict"
+
+import { KeyService } from "~services/key.service"
+import { PasswordService } from "~services/password.service"
+import { CryptoService } from "../services/crypto.service"
+import { DeviceService } from "~services/device.service"
 
 export {}
 
@@ -12,13 +11,15 @@ console.log("background.js is working")
 
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_DATA") {
-    if (req.access_token && req.enc_pri) {
-      const { salt, initializationVector, cipherText } = await encryptMessage(
-        req.access_token,
-        req.password
-      )
+    if (req.access_token && req.concatStr) {
+      const { salt, initializationVector, cipherText } =
+        await CryptoService.encryptMessage(req.access_token, req.password)
 
-      const enc_token = concatenateData(cipherText, initializationVector, salt)
+      const enc_token = CryptoService.concatenateData(
+        cipherText,
+        initializationVector,
+        salt
+      )
 
       chrome.storage.local.set({ enc_token: enc_token }, () => {
         if (chrome.runtime.lastError) {
@@ -27,7 +28,7 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
         }
       })
 
-      chrome.storage.local.set({ enc_pri: req.enc_pri }, () => {
+      chrome.storage.local.set({ enc_pri: req.concatStr }, () => {
         if (chrome.runtime.lastError) {
           console.error(
             "Error setting encrypted private key:",
@@ -45,8 +46,8 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else if (req.type === "REQUEST_DEVICE_ID") {
     try {
-      const deviceID = generateDeviceId()
-      chrome.storage.local.set({ deviceID: deviceID }, () => {
+      const deviceID = DeviceService.generateDeviceId()
+      chrome.storage.local.set({ device_id: deviceID }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error setting deviceID:", chrome.runtime.lastError)
           res({ success: false, deviceID: "" })
@@ -63,8 +64,8 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   } else if (req.type === "REQUEST_HASH_PASSWORD") {
     try {
       const { key: hashPassword, salt: salt } = req.salt
-        ? await deriveKey(req.password, req.salt)
-        : await deriveKey(req.password)
+        ? await PasswordService.deriveKey(req.password, req.salt)
+        : await PasswordService.deriveKey(req.password)
       const exportedKey = await self.crypto.subtle.exportKey(
         "raw",
         hashPassword
@@ -79,7 +80,7 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   } else if (req.type === "REQUEST_KEY_PAIR") {
     try {
       const { privateKey: privateKey, publicKey: publicKey } =
-        await generateKeyPair()
+        await KeyService.generateKeyPair()
       res({ success: true, privateKey: privateKey, publicKey: publicKey })
     } catch (error) {
       console.error("Error generate key:", error)
@@ -87,10 +88,8 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else if (req.type === "REQUEST_ENCRYPT_PRIVATE_KEY") {
     try {
-      const { salt, initializationVector, cipherText } = await encryptMessage(
-        req.privateKey,
-        req.password
-      )
+      const { salt, initializationVector, cipherText } =
+        await CryptoService.encryptMessage(req.privateKey, req.password)
       res({
         success: true,
         encryptedPrivateKey: cipherText,
@@ -98,7 +97,6 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
         initializationVector
       })
     } catch (error) {
-      console.error("Error encrypt key:", error)
       res({ success: false, encryptedPrivateKey: "" })
     }
   } else if (req.type === "REQUEST_TAB_INFO") {
@@ -119,17 +117,73 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     return true
   } else if (req.type === "REQUEST_DECRYPT") {
     try {
-      const password = await getSessionPassword()
-      if (req.text) {
-        const [initializationVector, salt, cipherText] = req.text.split("::")
-        const plainText = await decryptMessage(
-          { salt, initializationVector, cipherText },
-          password
-        )
-        if (plainText) {
-          res({ success: true, plainText: plainText })
-        } else {
-          res({ success: false })
+      const getSessionData = (key: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          chrome.storage.session.get(key, (result) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError)
+            } else {
+              resolve(result[key])
+            }
+          })
+        })
+      }
+      const password: string = await getSessionData("password")
+      const getEncryptedPrivateKey = (key: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          chrome.storage.local.get(key, (result) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError)
+            } else {
+              resolve(result[key])
+            }
+          })
+        })
+      }
+      const enc_pri: string = await getEncryptedPrivateKey("enc_pri")
+      if (req.concatStr) {
+        if (req.type_creds && req.type_creds === "personal_item") {
+          const [initializationVector, salt, cipherText] =
+            req.concatStr.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid credentials format")
+          }
+
+          const plainText = await CryptoService.decryptMessage(
+            { salt, initializationVector, cipherText },
+            password
+          )
+
+          if (plainText) {
+            res({ success: true, plainText: plainText })
+          } else {
+            res({ success: false })
+          }
+        } else if (req.type_creds && req.type_creds === "shared_item") {
+          let [initializationVector, salt, cipherText] = enc_pri.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid encrypt private key format")
+          }
+
+          const dec_pri = await CryptoService.decryptMessage(
+            { salt, initializationVector, cipherText },
+            password
+          )
+          ;[initializationVector, salt, cipherText] = req.concatStr.split("::")
+          if (!initializationVector || !salt || !cipherText) {
+            throw new Error("Invalid credentials format")
+          }
+
+          const plainText = await CryptoService.decryptMessage(
+            { salt, initializationVector, cipherText },
+            dec_pri
+          )
+
+          if (plainText) {
+            res({ success: true, plainText: plainText })
+          } else {
+            res({ success: false })
+          }
         }
       }
     } catch (error) {

@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react"
 
-import { apiCall } from "~services/api/api"
-import { getSessionToken } from "~services/token/get.session.token"
+import { TokenService } from "~services/token.service"
+import { apiCall } from "~utils/api"
 
 export default function Account() {
   const [fullname, setFullname] = useState<string>("")
 
   useEffect(() => {
     const fetchUser = async () => {
-      const token = await getSessionToken()
+      const token = await TokenService.getFromSession()
       const responseData = await apiCall(
         "/api/v1/auth/user",
         "GET",

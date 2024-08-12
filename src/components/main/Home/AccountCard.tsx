@@ -1,8 +1,8 @@
 import React, { useState } from "react"
 
-import { decryptMessage } from "~services/crypto/decrypt.message"
+import { CryptoService } from "~services/crypto.service"
 import { getEncryptedPrivateKey } from "~services/keyPair/get.ecncrypt.private.key"
-import { getSessionPassword } from "~services/password/get.session.password"
+import { PasswordService } from "~services/password.service"
 
 import Button from "./Button"
 
@@ -28,7 +28,7 @@ export default function AccountCard({
     setIsChecked((prev) => !prev)
     if (isChecked) {
       try {
-        const password = await getSessionPassword()
+        const password = await PasswordService.getFromSession()
         if (!password) {
           throw new Error("Failed to retrieve session password")
         }
@@ -40,7 +40,7 @@ export default function AccountCard({
             throw new Error("Invalid credentials format")
           }
 
-          const dec_credentials = await decryptMessage(
+          const dec_credentials = await CryptoService.decryptMessage(
             { salt, initializationVector, cipherText },
             password
           )
@@ -56,7 +56,7 @@ export default function AccountCard({
             throw new Error("Invalid encrypt private key format")
           }
 
-          const dec_pri = await decryptMessage(
+          const dec_pri = await CryptoService.decryptMessage(
             { salt, initializationVector, cipherText },
             password
           )
@@ -65,7 +65,7 @@ export default function AccountCard({
             throw new Error("Invalid credentials format")
           }
 
-          const dec_credentials = await decryptMessage(
+          const dec_credentials = await CryptoService.decryptMessage(
             { salt, initializationVector, cipherText },
             dec_pri
           )
