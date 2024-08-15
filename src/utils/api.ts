@@ -1,3 +1,5 @@
+import { DeviceService } from "~services/device.service"
+
 export async function apiCall(
   path = "/api",
   method = "GET",
@@ -5,9 +7,16 @@ export async function apiCall(
   token?: string
 ) {
   try {
+    const device_id = await DeviceService.getFromLocal()
+
     const headers = {}
+
+    if (device_id) {
+      headers["device_id"] = device_id
+    }
+
     if (token) {
-      headers["Authorization"] = `Bearer ${token}`
+      headers["Authorization"] = token
     }
 
     if (body) {

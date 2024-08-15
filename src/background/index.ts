@@ -1,9 +1,10 @@
 "use strict"
 
+import { DeviceService } from "~services/device.service"
 import { KeyService } from "~services/key.service"
 import { PasswordService } from "~services/password.service"
+
 import { CryptoService } from "../services/crypto.service"
-import { DeviceService } from "~services/device.service"
 
 export {}
 
@@ -81,23 +82,54 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     try {
       const { privateKey: privateKey, publicKey: publicKey } =
         await KeyService.generateKeyPair()
+        console.log("IM HERE")
       res({ success: true, privateKey: privateKey, publicKey: publicKey })
     } catch (error) {
-      console.error("Error generate key:", error)
       res({ success: false, privateKey: "", publicKey: "" })
     }
-  } else if (req.type === "REQUEST_ENCRYPT_PRIVATE_KEY") {
+  } else if (req.type === "REQUEST_ENCRYPT") {
     try {
-      const { salt, initializationVector, cipherText } =
-        await CryptoService.encryptMessage(req.privateKey, req.password)
-      res({
-        success: true,
-        encryptedPrivateKey: cipherText,
-        salt,
-        initializationVector
-      })
+      if (req.password) {
+        const { salt, initializationVector, cipherText } =
+          await CryptoService.encryptMessage(req.key, req.password)
+
+        res({
+          success: true,
+          cipherText: cipherText,
+          salt,
+          initializationVector
+        })
+      } else {
+        chrome.storage.session.get("password", async (result) => {
+          if (chrome.runtime.lastError) {
+            console.error("Error getting password:", chrome.runtime.lastError)
+            res({
+              success: false,
+              cipherText: "",
+              salt: "",
+              initializationVector: ""
+            })
+          } else {
+            const { salt, initializationVector, cipherText } =
+              await CryptoService.encryptMessage(req.key, result.password)
+
+            res({
+              success: true,
+              cipherText: cipherText,
+              salt: salt,
+              initializationVector: initializationVector
+            })
+          }
+        })
+      }
     } catch (error) {
-      res({ success: false, encryptedPrivateKey: "" })
+      console.error("Error encrypt key:", error)
+      res({
+        success: false,
+        cipherText: "",
+        salt: "",
+        initializationVector: ""
+      })
     }
   } else if (req.type === "REQUEST_TAB_INFO") {
     try {

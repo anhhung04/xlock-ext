@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 
 import { CryptoService } from "~services/crypto.service"
-import { getEncryptedPrivateKey } from "~services/keyPair/get.ecncrypt.private.key"
+import { KeyService } from "~services/key.service"
 import { PasswordService } from "~services/password.service"
 
 import Button from "./Button"
@@ -50,7 +50,7 @@ export default function AccountCard({
           setUsername(cardInfo.username)
           setPassword(cardInfo.password)
         } else if (type === "shared_item") {
-          const enc_pri = await getEncryptedPrivateKey()
+          const enc_pri = await KeyService.getEncryptedPrivateKey()
           let [initializationVector, salt, cipherText] = enc_pri.split("::")
           if (!initializationVector || !salt || !cipherText) {
             throw new Error("Invalid encrypt private key format")
