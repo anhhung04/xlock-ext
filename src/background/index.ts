@@ -12,7 +12,7 @@ console.log("background.js is working")
 
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_DATA") {
-    if (req.access_token && req.concatStr) {
+    if (req.access_token ) {
       const { salt, initializationVector, cipherText } =
         await CryptoService.encryptMessage(req.access_token, req.password)
 
@@ -29,15 +29,14 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
         }
       })
 
-      chrome.storage.local.set({ enc_pri: req.concatStr }, () => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Error setting encrypted private key:",
-            chrome.runtime.lastError
-          )
-          res({ success: false })
-        }
-      })
+      if (req.salt) {
+        chrome.storage.local.set({salt: req.salt}, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error setting salt:", chrome.runtime.lastError)
+            res({ success: false })
+          }
+        })
+      }
 
       res({ success: true })
 
@@ -64,9 +63,28 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else if (req.type === "REQUEST_HASH_PASSWORD") {
     try {
-      const { key: hashPassword, salt: salt } = req.salt
-        ? await PasswordService.deriveKey(req.password, req.salt)
-        : await PasswordService.deriveKey(req.password)
+      let existingSalt: string;
+      if (req.salt) {
+        existingSalt = req.salt
+      }
+      else {
+        const getSalt = (salt: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          chrome.storage.session.get(salt, (result) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError)
+            } else {
+              resolve(result[salt])
+            }
+          })
+        })
+      }
+
+      existingSalt = await getSalt("salt")
+      }
+      const { key: hashPassword, salt: salt } =
+         await PasswordService.deriveKey(req.password, existingSalt)
+        
       const exportedKey = await self.crypto.subtle.exportKey(
         "raw",
         hashPassword
