@@ -10,9 +10,9 @@ export async function apiCall(
     const device_id = await DeviceService.getFromLocal()
 
     const headers = {
-      "Content-type" : "application/json",
-      "X-Device-ID" : device_id,
-      "Authorization": `Bearer ${token}` 
+      "Content-type": "application/json",
+      "X-Device-ID": device_id,
+      Authorization: `Bearer ${token}`
     }
 
     const res = await fetch(
