@@ -150,7 +150,7 @@ function attachPopupToXLockButton(
     sendToBackground({
       name: "ping",
       body: {
-        action: "getToken"
+        action: "getSessionToken"
       }
     }).then((response) => {
       removeExistingPopup()

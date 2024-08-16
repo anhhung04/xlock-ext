@@ -66,7 +66,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       if (chrome.runtime.lastError) {
         sendResponse({ success: false, deviceID: "" })
       } else {
-        sendResponse({ success: true, deviceID: result.deviceID })
+        sendResponse({ success: true, deviceID: result.device_id })
       }
       return true
     })

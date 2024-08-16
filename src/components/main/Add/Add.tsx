@@ -81,7 +81,7 @@ export default function Add() {
       setUsername("")
       setPassword("")
     } else {
-      console.log("ADD ACCOUNT FAILED")
+      console.log(responseData)
     }
   }
   return (

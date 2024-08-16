@@ -13,8 +13,9 @@ console.log("background.js is working")
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_DATA") {
     if (req.access_token ) {
+      // use req.password to encrypt later
       const { salt, initializationVector, cipherText } =
-        await CryptoService.encryptMessage(req.access_token, req.password)
+        await CryptoService.encryptMessage(req.access_token, "11111111")
 
       const enc_token = CryptoService.concatenateData(
         cipherText,
@@ -100,7 +101,6 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     try {
       const { privateKey: privateKey, publicKey: publicKey } =
         await KeyService.generateKeyPair()
-        console.log("IM HERE")
       res({ success: true, privateKey: privateKey, publicKey: publicKey })
     } catch (error) {
       res({ success: false, privateKey: "", publicKey: "" })
