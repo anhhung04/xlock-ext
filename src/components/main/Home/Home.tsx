@@ -62,11 +62,6 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
       const listAccountCards: (ItemModel | ShareItemModel)[] = Array.isArray(responseData.data) ? responseData.data : []
       setAccountCards(listAccountCards)
 
-     chrome.runtime.sendMessage({
-      type: "ACCOUNT_CARDS_RESPONSE",
-      data: responseData
-     }) 
-
       if (listAccountCards.length === 0) {
         setShowModal(true)
       }

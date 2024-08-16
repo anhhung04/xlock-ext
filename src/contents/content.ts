@@ -316,16 +316,7 @@ function createAutofillPopup(inputField: HTMLInputElement): HTMLElement {
       }
     }).then((response) => {
       const accountCards = response.data
-      //////////
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.type === 'ACCOUNT_CARDS_RESPONSE') {
-          const responseData = message.data;
-          console.log('Received account cards data:', responseData);
-          // Process the data as needed
-        }
-        return true
-      });
-      /////////
+
       if (accountCards.length > 0) {
         const accounts = accountCards.map(
           (card: ItemModel | ShareItemModel) => ({

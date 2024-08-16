@@ -12,7 +12,7 @@ console.log("background.js is working")
 
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_DATA") {
-    if (req.access_token ) {
+    if (req.access_token) {
       // use req.password to encrypt later
       const { salt, initializationVector, cipherText } =
         await CryptoService.encryptMessage(req.access_token, "11111111")
@@ -31,7 +31,7 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
       })
 
       if (req.salt) {
-        chrome.storage.local.set({salt: req.salt}, () => {
+        chrome.storage.local.set({ salt: req.salt }, () => {
           if (chrome.runtime.lastError) {
             console.error("Error setting salt:", chrome.runtime.lastError)
             res({ success: false })
@@ -64,28 +64,29 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else if (req.type === "REQUEST_HASH_PASSWORD") {
     try {
-      let existingSalt: string;
+      let existingSalt: string
       if (req.salt) {
         existingSalt = req.salt
-      }
-      else {
+      } else {
         const getSalt = (salt: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          chrome.storage.session.get(salt, (result) => {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError)
-            } else {
-              resolve(result[salt])
-            }
+          return new Promise((resolve, reject) => {
+            chrome.storage.session.get(salt, (result) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError)
+              } else {
+                resolve(result[salt])
+              }
+            })
           })
-        })
-      }
+        }
 
-      existingSalt = await getSalt("salt")
+        existingSalt = await getSalt("salt")
       }
-      const { key: hashPassword, salt: salt } =
-         await PasswordService.deriveKey(req.password, existingSalt)
-        
+      const { key: hashPassword, salt: salt } = await PasswordService.deriveKey(
+        req.password,
+        existingSalt
+      )
+
       const exportedKey = await self.crypto.subtle.exportKey(
         "raw",
         hashPassword
@@ -234,7 +235,6 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
 })
 
 chrome.runtime.onSuspend.addListener(() => {
-  console.log("Browser is closing, clearing session storage")
   chrome.storage.session.clear(() => {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError)
