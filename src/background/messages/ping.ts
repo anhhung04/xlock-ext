@@ -122,11 +122,15 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           null,
           result.user_token
         )
+          console.log("RESPONSE DATA:::", responseData)
         if (responseData["code"] === 401) {
           throw new Error(responseData["message"])
         }
         const listAccountCards: (ItemModel | ShareItemModel)[] =
-          responseData.data
+        Array.isArray(responseData.data) ? responseData.data : []
+
+        console.log(listAccountCards)
+
         sendResponse({ success: true, data: listAccountCards })
       }
     })

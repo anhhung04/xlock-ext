@@ -179,19 +179,8 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
         })
       }
       const password: string = await getSessionData("password")
-      const getEncryptedPrivateKey = (key: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          chrome.storage.local.get(key, (result) => {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError)
-            } else {
-              resolve(result[key])
-            }
-          })
-        })
-      }
-      const enc_pri: string = await getEncryptedPrivateKey("enc_pri")
-      if (req.concatStr) {
+
+      if (req.text) {
         if (req.type_creds && req.type_creds === "personal_item") {
           const [initializationVector, salt, cipherText] =
             req.concatStr.split("::")
@@ -205,24 +194,21 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
           )
 
           if (plainText) {
-            res({ success: true, plainText: plainText })
+            res({ success: true, plaintext: plainText })
           } else {
             res({ success: false })
           }
         } else if (req.type_creds && req.type_creds === "shared_item") {
-          let [initializationVector, salt, cipherText] = enc_pri.split("::")
-          if (!initializationVector || !salt || !cipherText) {
-            throw new Error("Invalid encrypt private key format")
+          if (!req.enc_pri) {
+            throw new Error("Invalid credential")
           }
+          let [initializationVector, salt, cipherText] = req.enc_pri.split("::")
 
           const dec_pri = await CryptoService.decryptMessage(
             { salt, initializationVector, cipherText },
             password
           )
-          ;[initializationVector, salt, cipherText] = req.concatStr.split("::")
-          if (!initializationVector || !salt || !cipherText) {
-            throw new Error("Invalid credentials format")
-          }
+          ;[initializationVector, salt, cipherText] = req.text.split("::")
 
           const plainText = await CryptoService.decryptMessage(
             { salt, initializationVector, cipherText },
@@ -230,7 +216,7 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
           )
 
           if (plainText) {
-            res({ success: true, plainText: plainText })
+            res({ success: true, plaintext: plainText })
           } else {
             res({ success: false })
           }

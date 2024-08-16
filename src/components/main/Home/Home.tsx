@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { sendToBackground } from "@plasmohq/messaging"
+import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
 
 import type { ItemModel, ShareItemModel } from "~components/types/Item"
 import { TokenService } from "~services/token.service"
@@ -48,7 +48,6 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
       const mainURL = await getURL()
 
       const token = await TokenService.getFromSession()
-        // /api/v1/items/?site=${mainURL}
       const responseData = await apiCall(
         `/api/v1/items/?site=${mainURL}`,
         "GET",
@@ -62,6 +61,11 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
 
       const listAccountCards: (ItemModel | ShareItemModel)[] = Array.isArray(responseData.data) ? responseData.data : []
       setAccountCards(listAccountCards)
+
+     chrome.runtime.sendMessage({
+      type: "ACCOUNT_CARDS_RESPONSE",
+      data: responseData
+     }) 
 
       if (listAccountCards.length === 0) {
         setShowModal(true)
