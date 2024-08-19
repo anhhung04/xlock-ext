@@ -7,8 +7,7 @@ import { sendToBackground } from "@plasmohq/messaging"
 export class DeviceService {
   static generateDeviceId = (): string => {
     const uuid = uuidv4()
-    const result = uuid.replace(/-/g, "")
-    return result
+    return uuid 
   }
 
   static getFromLocal = async (): Promise<string> => {

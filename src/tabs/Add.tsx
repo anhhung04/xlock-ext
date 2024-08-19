@@ -151,7 +151,6 @@ export default function Add() {
                 width={40}
                 height={40}
                 style={{ width: "30px", height: "30px" }}
-                onError={() => console.error("Error loading image:", tabIcon)}
               />
             </div>
 
@@ -269,6 +268,7 @@ export default function Add() {
               Website Address
             </label>
             <input
+              readOnly
               id="address"
               placeholder="Enter address"
               style={{

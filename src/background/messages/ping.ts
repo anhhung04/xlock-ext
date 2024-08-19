@@ -4,11 +4,10 @@ import { sendToContentScript } from "@plasmohq/messaging"
 
 import type { ItemModel, ShareItemModel } from "~components/types/Item"
 import { CryptoService } from "~services/crypto.service"
-import { apiCall } from "~utils/api"
 
 export default {}
 
-const getURL = () => {
+const getURL = async (): Promise<string> => {
   return new Promise((resolve, reject) => {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       const currentTab = tabs[0]
@@ -66,7 +65,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       if (chrome.runtime.lastError) {
         sendResponse({ success: false, deviceID: "" })
       } else {
-        sendResponse({ success: true, deviceID: result.deviceID })
+        sendResponse({ success: true, deviceID: result.device_id })
       }
       return true
     })
@@ -111,22 +110,53 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     return true
   } else if (request.body.action === "fetchAccountCards") {
     const mainURL = await getURL()
+
     chrome.storage.session.get("user_token", async (result) => {
       if (chrome.runtime.lastError) {
         console.error("Error getting token:", chrome.runtime.lastError)
         sendResponse({ success: false, error: chrome.runtime.lastError })
       } else {
-        const responseData = await apiCall(
-          `/api/v1/items/?site=${mainURL}`,
-          "GET",
-          null,
-          result.user_token
+        const getLocalData = (key: string): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.get(key, (result) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError)
+              } else {
+                resolve(result[key])
+              }
+            })
+          })
+        }
+        const device_id: string = await getLocalData("device_id")
+        const headers = {
+          "Content-type": "application/json",
+          "X-Device-ID": device_id,
+          Authorization: `Bearer ${result.user_token}`
+        }
+        const response = await fetch(
+          (process.env.PLASMO_PUBLIC_BACKEND_URL || "http://localhost:8000") +
+            `/api/v1/items/?site=${mainURL}`,
+          {
+            method: "GET",
+            body: null,
+            headers: headers,
+            credentials: "include"
+          }
         )
+
+        const responseData = await response.json()
+
         if (responseData["code"] === 401) {
           throw new Error(responseData["message"])
         }
-        const listAccountCards: (ItemModel | ShareItemModel)[] =
+        const listAccountCards: (ItemModel | ShareItemModel)[] = Array.isArray(
           responseData.data
+        )
+          ? responseData.data
+          : []
+
+        console.log(listAccountCards)
+
         sendResponse({ success: true, data: listAccountCards })
       }
     })
@@ -266,6 +296,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
   } else if (request.body.action === "sendData") {
     try {
+      console.log(request.body.data)
       if (request.body.data) {
         const getSessionData = (key: string): Promise<string> => {
           return new Promise((resolve, reject) => {
@@ -302,11 +333,34 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           logo_url: request.body.data.logo_url
         }
 
-        const responseData = await apiCall(
-          "/api/v1/items/create",
-          "POST",
-          data,
-          token
+        const getLocalData = (key: string): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.get(key, (result) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError)
+              } else {
+                resolve(result[key])
+              }
+            })
+          })
+        }
+
+        const device_id: string = await getLocalData("device_id")
+        const headers = {
+          "Content-type": "application/json",
+          "X-Device-ID": device_id,
+          Authorization: `Bearer ${token}`
+        }
+
+        const responseData = await fetch(
+          (process.env.PLASMO_PUBLIC_BACKEND_URL || "http://localhost:8000") +
+            "/api/v1/items/create",
+          {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(data),
+            credentials: "include"
+          }
         )
 
         if (responseData["code"] === 201) {
@@ -319,12 +373,15 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         } else {
           sendResponse({ success: false })
         }
+        return true
       } else {
         sendResponse({ success: false })
+        return true
       }
     } catch (error) {
       console.error(error)
       sendResponse({ success: false })
+      return true
     }
     return true
   } else if (request.body.action === "getEncryptedPrivateKey") {

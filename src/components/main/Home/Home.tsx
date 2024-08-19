@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { sendToBackground } from "@plasmohq/messaging"
+import { sendToBackground, sendToContentScript } from "@plasmohq/messaging"
 
 import type { ItemModel, ShareItemModel } from "~components/types/Item"
 import { TokenService } from "~services/token.service"
@@ -48,7 +48,6 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
       const mainURL = await getURL()
 
       const token = await TokenService.getFromSession()
-
       const responseData = await apiCall(
         `/api/v1/items/?site=${mainURL}`,
         "GET",
@@ -56,11 +55,11 @@ export default function Home({ loginSuccess, onAddAccount }: HomeProps) {
         token
       )
 
-      if (responseData["code"] === 401) {
-        throw new Error(responseData["message"])
+      if (responseData["code"] != 200) {
+        throw new Error(responseData.status)
       }
 
-      const listAccountCards: (ItemModel | ShareItemModel)[] = responseData.data
+      const listAccountCards: (ItemModel | ShareItemModel)[] = Array.isArray(responseData.data) ? responseData.data : []
       setAccountCards(listAccountCards)
 
       if (listAccountCards.length === 0) {

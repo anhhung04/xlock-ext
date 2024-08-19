@@ -72,12 +72,12 @@ export default function Generate() {
       setLength(0)
     } else if (!isNaN(Number(newValue))) {
       const value = Number(newValue)
-      if (value >= 4 && value <= 100) {
+      if (value >= 8 && value <= 128) {
         setLength(value)
-      } else if (value < 4) {
+      } else if (value < 8) {
         setLength(value)
       } else {
-        setLength(100)
+        setLength(128)
       }
     }
   }
@@ -168,8 +168,8 @@ export default function Generate() {
               onChange={handleSliderChange}
               aria-labelledby="password-length-slider"
               valueLabelDisplay="auto"
-              min={4}
-              max={100}
+              min={8}
+              max={128}
               style={{ flex: 1, marginLeft: 8, marginRight: 220 }}
             />
           </div>

@@ -1,4 +1,4 @@
-"use strict"
+'use strict'
 
 import { PasswordService } from "./password.service"
 
@@ -65,8 +65,7 @@ export class CryptoService {
   ): Promise<string> => {
     try {
       const { crypto } = global
-      const { initializationVector, salt, cipherText } = vault
-
+      const {  initializationVector,salt, cipherText } = vault
       const { key } = await PasswordService.deriveKey(password, salt)
 
       const decryptedData = await crypto.subtle.decrypt(
@@ -77,8 +76,8 @@ export class CryptoService {
 
       return new TextDecoder().decode(decryptedData)
     } catch (error) {
-      console.error("Error Message:", error.message)
-      throw error
+      console.error("Decryption failed:", error);
+      throw error;
     }
   }
 }

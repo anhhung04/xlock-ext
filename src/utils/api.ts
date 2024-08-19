@@ -9,25 +9,19 @@ export async function apiCall(
   try {
     const device_id = await DeviceService.getFromLocal()
 
-    const headers = {}
-
-    if (device_id) {
-      headers["device_id"] = device_id
+    const headers = {
+      "Content-type": "application/json",
+      "X-Device-ID": device_id,
+      Authorization: `Bearer ${token}`
     }
 
-    if (token) {
-      headers["Authorization"] = token
-    }
-
-    if (body) {
-      headers["Content-type"] = "application/json"
-    }
     const res = await fetch(
       (process.env.PLASMO_PUBLIC_BACKEND_URL || "http://localhost:8000") + path,
       {
         method,
         headers,
-        body: body ? JSON.stringify(body) : null
+        body: body ? JSON.stringify(body) : null,
+        credentials: "include"
       }
     )
 

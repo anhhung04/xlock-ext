@@ -12,9 +12,10 @@ console.log("background.js is working")
 
 chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
   if (req.type === "SEND_DATA") {
-    if (req.access_token && req.concatStr) {
+    if (req.access_token) {
+      // use req.password to encrypt later
       const { salt, initializationVector, cipherText } =
-        await CryptoService.encryptMessage(req.access_token, req.password)
+        await CryptoService.encryptMessage(req.access_token, "11111111")
 
       const enc_token = CryptoService.concatenateData(
         cipherText,
@@ -29,15 +30,14 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
         }
       })
 
-      chrome.storage.local.set({ enc_pri: req.concatStr }, () => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Error setting encrypted private key:",
-            chrome.runtime.lastError
-          )
-          res({ success: false })
-        }
-      })
+      if (req.salt) {
+        chrome.storage.local.set({ salt: req.salt }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error setting salt:", chrome.runtime.lastError)
+            res({ success: false })
+          }
+        })
+      }
 
       res({ success: true })
 
@@ -64,9 +64,29 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     }
   } else if (req.type === "REQUEST_HASH_PASSWORD") {
     try {
-      const { key: hashPassword, salt: salt } = req.salt
-        ? await PasswordService.deriveKey(req.password, req.salt)
-        : await PasswordService.deriveKey(req.password)
+      let existingSalt: string
+      if (req.salt) {
+        existingSalt = req.salt
+      } else {
+        const getSalt = (salt: string): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            chrome.storage.session.get(salt, (result) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError)
+              } else {
+                resolve(result[salt])
+              }
+            })
+          })
+        }
+
+        existingSalt = await getSalt("salt")
+      }
+      const { key: hashPassword, salt: salt } = await PasswordService.deriveKey(
+        req.password,
+        existingSalt
+      )
+
       const exportedKey = await self.crypto.subtle.exportKey(
         "raw",
         hashPassword
@@ -82,7 +102,6 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
     try {
       const { privateKey: privateKey, publicKey: publicKey } =
         await KeyService.generateKeyPair()
-        console.log("IM HERE")
       res({ success: true, privateKey: privateKey, publicKey: publicKey })
     } catch (error) {
       res({ success: false, privateKey: "", publicKey: "" })
@@ -161,19 +180,8 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
         })
       }
       const password: string = await getSessionData("password")
-      const getEncryptedPrivateKey = (key: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          chrome.storage.local.get(key, (result) => {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError)
-            } else {
-              resolve(result[key])
-            }
-          })
-        })
-      }
-      const enc_pri: string = await getEncryptedPrivateKey("enc_pri")
-      if (req.concatStr) {
+
+      if (req.text) {
         if (req.type_creds && req.type_creds === "personal_item") {
           const [initializationVector, salt, cipherText] =
             req.concatStr.split("::")
@@ -187,24 +195,21 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
           )
 
           if (plainText) {
-            res({ success: true, plainText: plainText })
+            res({ success: true, plaintext: plainText })
           } else {
             res({ success: false })
           }
         } else if (req.type_creds && req.type_creds === "shared_item") {
-          let [initializationVector, salt, cipherText] = enc_pri.split("::")
-          if (!initializationVector || !salt || !cipherText) {
-            throw new Error("Invalid encrypt private key format")
+          if (!req.enc_pri) {
+            throw new Error("Invalid credential")
           }
+          let [initializationVector, salt, cipherText] = req.enc_pri.split("::")
 
           const dec_pri = await CryptoService.decryptMessage(
             { salt, initializationVector, cipherText },
             password
           )
-          ;[initializationVector, salt, cipherText] = req.concatStr.split("::")
-          if (!initializationVector || !salt || !cipherText) {
-            throw new Error("Invalid credentials format")
-          }
+          ;[initializationVector, salt, cipherText] = req.text.split("::")
 
           const plainText = await CryptoService.decryptMessage(
             { salt, initializationVector, cipherText },
@@ -212,7 +217,7 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
           )
 
           if (plainText) {
-            res({ success: true, plainText: plainText })
+            res({ success: true, plaintext: plainText })
           } else {
             res({ success: false })
           }
@@ -230,7 +235,6 @@ chrome.runtime.onMessageExternal.addListener(async function (req, sender, res) {
 })
 
 chrome.runtime.onSuspend.addListener(() => {
-  console.log("Browser is closing, clearing session storage")
   chrome.storage.session.clear(() => {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError)

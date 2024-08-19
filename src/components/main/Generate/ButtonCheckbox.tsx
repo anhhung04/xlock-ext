@@ -22,9 +22,9 @@ const ButtonCheckbox: React.FC<CardProps> = ({ id, title, handleChecked }) => {
     handleChecked(newChecked)
   }
   return (
-    <div className="plasmo-relative plasmo-mb-6 plasmo-w-fit">
+    <div className="plasmo-relative plasmo-mb-6 plasmo-w-fit plasmo-h-fit">
       <input
-        className="plasmo-absolute plasmo-top-0 plasmo-left-0 plasmo-w-full plasmo-h-full plasmo-opacity-0 plasmo-cursor-pointer"
+        className="plasmo-absolute plasmo-top-0 plasmo-left-0 plasmo-w-full plasmo-h-[30px] plasmo-opacity-0 plasmo-cursor-pointer"
         type="checkbox"
         id={id}
         checked={isChecked}
